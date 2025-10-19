@@ -1,14 +1,18 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR Photo</title>
     <style>
       body {
         margin: 0;
         overflow: hidden;
         background: black;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
       }
+
       video {
         position: fixed;
         top: 0;
@@ -16,24 +20,43 @@
         width: 100vw;
         height: 100vh;
         object-fit: cover;
-        transform: scaleX(-1); /* 自撮り風の反転 */
+        transform: scaleX(-1); /* 自撮り風ミラー反転 */
+        z-index: 1;
       }
+
       img#overlay {
         position: fixed;
-        bottom: 0;
-        right: 0;
-        width: 40vw; /* キャラクターの大きさ */
+        bottom: 5%;
+        right: 30%;
+        transform: translateX(50%);
+        width: 80vw; /* ここでサイズ調整 */
         opacity: 0.95;
-        z-index: 10;
+        z-index: 2;
+      }
+
+      button {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 18px;
+        padding: 10px 20px;
+        background: #ff4081;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        z-index: 3;
       }
     </style>
   </head>
   <body>
     <video id="cam" autoplay playsinline></video>
-    <img id="overlay" alt="overlay">
+    <img id="overlay" src="" alt="overlay">
+    <button id="capture">📸 撮影</button>
+
+    <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-      // カメラ起動
       async function startCam() {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -43,21 +66,46 @@
         }
       }
 
-      // Thunkableから渡された ?img= の値を取得して画像表示
-      function loadOverlay() {
-        const params = new URLSearchParams(window.location.search);
-        const imgUrl = params.get("img");
-        const overlay = document.getElementById("overlay");
-
-        if (imgUrl) {
-          overlay.src = decodeURIComponent(imgUrl);
-        } else {
-          overlay.src = "https://via.placeholder.com/150?text=No+Image";
-        }
+      // URLパラメータから画像を取得
+      const params = new URLSearchParams(window.location.search);
+      const imgURL = params.get("img");
+      if (imgURL) {
+        document.getElementById("overlay").src = imgURL;
       }
 
+      // 撮影ボタン動作
+      document.getElementById("capture").addEventListener("click", () => {
+        const video = document.getElementById("cam");
+        const overlay = document.getElementById("overlay");
+        const canvas = document.getElementById("canvas");
+        const context = canvas.getContext("2d");
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+
+        // 背景（カメラ）
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // オーバーレイ（キャラ画像）
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = overlay.src;
+        img.onload = () => {
+          const overlayWidth = canvas.width * 0.6; // 60%
+          const overlayHeight = (img.height / img.width) * overlayWidth;
+          const x = (canvas.width - overlayWidth) / 2;
+          const y = canvas.height - overlayHeight - 50;
+          context.drawImage(img, x, y, overlayWidth, overlayHeight);
+
+          // 保存
+          const link = document.createElement("a");
+          link.download = "photo.png";
+          link.href = canvas.toDataURL("image/png");
+          link.click();
+        };
+      });
+
       startCam();
-      loadOverlay();
     </script>
   </body>
 </html>
