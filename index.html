@@ -57,63 +57,68 @@
     <canvas id="canvas" style="display:none;"></canvas>
 
     <script>
-      async function startCam() {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          document.getElementById("cam").srcObject = stream;
-        } catch (err) {
-          alert("カメラにアクセスできません: " + err);
-        }
+    document.addEventListener("DOMContentLoaded", async () => {
+      const video = document.getElementById("cam");
+      const overlay = document.getElementById("overlay");
+      const captureBtn = document.getElementById("capture");
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // カメラ開始
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+      } catch (err) {
+        alert("カメラにアクセスできません: " + err);
       }
 
-      // URLパラメータから画像を取得
+      // URLパラメータから overlay 画像
       const params = new URLSearchParams(window.location.search);
       const imgURL = params.get("img");
       if (imgURL) {
-        document.getElementById("overlay").src = imgURL;
+        overlay.src = imgURL;
       }
 
-      // 撮影ボタン動作
-      document.getElementById("capture").addEventListener("click", () => {
-        const video = document.getElementById("cam");
-        const overlay = document.getElementById("overlay");
-        const canvas = document.getElementById("canvas");
-        const context = canvas.getContext("2d");
+      // 撮影ボタン
+      captureBtn.addEventListener("click", () => {
+        if (!video.videoWidth || !video.videoHeight) {
+          alert("カメラの映像がまだ取得できていません");
+          return;
+        }
 
+        // canvas の解像度を video と同じに
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
 
-        // 背景（カメラ）
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // カメラ映像を描画
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // overlay の座標とサイズを画面上から取得して canvas に変換
-      const videoRect = video.getBoundingClientRect();
-      const overlayRect = overlay.getBoundingClientRect();
-      const scaleX = canvas.width / videoRect.width;
-      const scaleY = canvas.height / videoRect.height;
+        // overlay の座標を取得して canvas に変換
+        const videoRect = video.getBoundingClientRect();
+        const overlayRect = overlay.getBoundingClientRect();
+        const scaleX = canvas.width / videoRect.width;
+        const scaleY = canvas.height / videoRect.height;
 
-      const x = (overlayRect.left - videoRect.left) * scaleX;
-      const y = (overlayRect.top - videoRect.top) * scaleY;
-      const w = overlayRect.width * scaleX;
-      const h = overlayRect.height * scaleY;
+        const x = (overlayRect.left - videoRect.left) * scaleX;
+        const y = (overlayRect.top - videoRect.top) * scaleY;
+        const w = overlayRect.width * scaleX;
+        const h = overlayRect.height * scaleY;
 
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = overlay.src;
-      img.onload = () => {
-        ctx.drawImage(img, x, y, w, h);
+        // overlay を描画して保存
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = overlay.src;
+        img.onload = () => {
+          ctx.drawImage(img, x, y, w, h);
 
-          // 保存
+          // ダウンロード
           const link = document.createElement("a");
           link.download = "photo.png";
           link.href = canvas.toDataURL("image/png");
           link.click();
         };
       });
-
-      startCam();
-    </script>
-  </body>
+    });
+  </script>
+</body>
 </html>
-
-
