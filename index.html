@@ -3,197 +3,110 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: black;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-    }
-
-    video {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-      transform: scaleX(-1);
-      z-index: 1;
-    }
-
-    img#overlay {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 80vw;
-      opacity: 0.95;
-      z-index: 2;
-      cursor: move;
-      touch-action: none;
-    }
-
-    #controls {
-      position: fixed;
-      bottom: 20px;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      z-index: 3;
-    }
-
-    button {
-      font-size: 16px;
-      padding: 10px 20px;
-      background: #ff4081;
-      color: white;
-      border: none;
-      border-radius: 8px;
-    }
-
-    #preview {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.8);
-      justify-content: center;
-      align-items: center;
-      flex-direction: column;
-      z-index: 4;
-    }
-
-    #preview img {
-      max-width: 90%;
-      max-height: 80%;
-    }
+    body { margin:0; overflow:hidden; background:black; display:flex; justify-content:center; align-items:center; flex-direction:column; }
+    #cam, #overlay { position: absolute; top:0; left:0; width:100vw; height:100vh; object-fit:cover; }
+    #overlay { cursor: move; z-index:2; opacity:0.95; }
+    #preview { display:none; width:100vw; height:100vh; object-fit:contain; z-index:3; }
+    #buttons { position:absolute; bottom:20px; z-index:4; display:flex; gap:10px; }
+    button { padding:10px 20px; font-size:16px; border:none; border-radius:8px; background:#ff4081; color:white; }
   </style>
 </head>
 <body>
   <video id="cam" autoplay playsinline></video>
   <img id="overlay" src="" alt="overlay">
+  <img id="preview" alt="preview">
   
-  <div id="controls">
-    <button id="prev">← 前へ</button>
+  <div id="buttons">
     <button id="capture">📸 撮影</button>
-    <button id="next">次へ →</button>
+    <button id="retake" style="display:none;">🔄 撮り直す</button>
+    <button id="save" style="display:none;">💾 保存</button>
+    <button id="done" style="display:none;">✅ 完了</button>
   </div>
-
-  <div id="preview">
-    <img id="previewImage" src="">
-    <button id="download">ダウンロード</button>
-    <button id="closePreview">撮り直す</button>
-  </div>
-
+  
   <canvas id="canvas" style="display:none;"></canvas>
-
+  
   <script>
-    // ✅ Google Sheetsから配列を受け取る形式（例: ?imgs=url1,url2,url3）
-    const params = new URLSearchParams(window.location.search);
-    const imgsParam = params.get("imgs");
-    const overlays = imgsParam ? imgsParam.split(",") : [];
-    let currentIndex = 0;
-
-    const overlay = document.getElementById("overlay");
-    const video = document.getElementById("cam");
-    const canvas = document.getElementById("canvas");
-    const preview = document.getElementById("preview");
-    const previewImage = document.getElementById("previewImage");
-
-    // ✅ カメラ起動
     async function startCam() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
+        document.getElementById("cam").srcObject = stream;
       } catch (err) {
         alert("カメラにアクセスできません: " + err);
       }
     }
 
-    // ✅ overlay切り替え
-    function updateOverlay() {
-      if (overlays.length > 0) {
-        overlay.src = overlays[currentIndex];
-      }
-    }
+    // URLパラメータからオーバーレイ画像
+    const params = new URLSearchParams(window.location.search);
+    const imgURL = params.get("img");
+    if (imgURL) document.getElementById("overlay").src = imgURL;
 
-    document.getElementById("next").addEventListener("click", () => {
-      currentIndex = (currentIndex + 1) % overlays.length;
-      updateOverlay();
-    });
+    const cam = document.getElementById("cam");
+    const overlay = document.getElementById("overlay");
+    const preview = document.getElementById("preview");
+    const canvas = document.getElementById("canvas");
+    const captureBtn = document.getElementById("capture");
+    const retakeBtn = document.getElementById("retake");
+    const saveBtn = document.getElementById("save");
+    const doneBtn = document.getElementById("done");
 
-    document.getElementById("prev").addEventListener("click", () => {
-      currentIndex = (currentIndex - 1 + overlays.length) % overlays.length;
-      updateOverlay();
-    });
+    // ドラッグでオーバーレイ移動
+    let isDragging = false, offsetX=0, offsetY=0;
+    overlay.addEventListener("mousedown", e => { isDragging=true; offsetX=e.offsetX; offsetY=e.offsetY; });
+    overlay.addEventListener("mousemove", e => { if(isDragging){ overlay.style.left=(e.pageX-offsetX)+"px"; overlay.style.top=(e.pageY-offsetY)+"px"; } });
+    overlay.addEventListener("mouseup", e=>{ isDragging=false; });
+    overlay.addEventListener("touchstart", e => { isDragging=true; const t=e.touches[0]; offsetX=t.clientX-overlay.offsetLeft; offsetY=t.clientY-overlay.offsetTop; });
+    overlay.addEventListener("touchmove", e => { if(isDragging){ const t=e.touches[0]; overlay.style.left=(t.clientX-offsetX)+"px"; overlay.style.top=(t.clientY-offsetY)+"px"; } });
+    overlay.addEventListener("touchend", e=>{ isDragging=false; });
 
-    // ✅ ドラッグ移動
-    let isDragging = false, offsetX, offsetY;
-    overlay.addEventListener("mousedown", (e) => {
-      isDragging = true;
-      offsetX = e.clientX - overlay.offsetLeft;
-      offsetY = e.clientY - overlay.offsetTop;
-    });
-    window.addEventListener("mouseup", () => isDragging = false);
-    window.addEventListener("mousemove", (e) => {
-      if (isDragging) {
-        overlay.style.left = `${e.clientX - offsetX}px`;
-        overlay.style.top = `${e.clientY - offsetY}px`;
-      }
-    });
-
-    // ✅ 撮影ボタン
-    document.getElementById("capture").addEventListener("click", () => {
-      const context = canvas.getContext("2d");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // 撮影
+    captureBtn.addEventListener("click", ()=>{
+      canvas.width = cam.videoWidth;
+      canvas.height = cam.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
 
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.src = overlay.src;
-      img.onload = () => {
-        const overlayRect = overlay.getBoundingClientRect();
-        const scaleX = canvas.width / window.innerWidth;
-        const scaleY = canvas.height / window.innerHeight;
-        context.drawImage(
-          img,
-          overlayRect.left * scaleX,
-          overlayRect.top * scaleY,
-          overlayRect.width * scaleX,
-          overlayRect.height * scaleY
-        );
+      img.onload = ()=>{
+        const overlayWidth = canvas.width * 0.6;
+        const overlayHeight = (img.height/img.width)*overlayWidth;
+        const x = parseFloat(overlay.style.left || canvas.width*0.2);
+        const y = parseFloat(overlay.style.top || canvas.height*0.3);
+        ctx.drawImage(img, x, y, overlayWidth, overlayHeight);
 
-        const dataUrl = canvas.toDataURL("image/png");
-        previewImage.src = dataUrl;
-        preview.style.display = "flex";
+        preview.src = canvas.toDataURL("image/png");
+        preview.style.display="block";
+        captureBtn.style.display="none";
+        retakeBtn.style.display="inline";
+        saveBtn.style.display="inline";
+        doneBtn.style.display="inline";
       };
     });
 
-    // ✅ ダウンロード
-    document.getElementById("download").addEventListener("click", () => {
+    // 撮り直し
+    retakeBtn.addEventListener("click", ()=>{
+      preview.style.display="none";
+      captureBtn.style.display="inline";
+      retakeBtn.style.display="none";
+      saveBtn.style.display="none";
+      doneBtn.style.display="none";
+    });
+
+    // 保存
+    saveBtn.addEventListener("click", ()=>{
       const link = document.createElement("a");
       link.download = "photo.png";
-      link.href = previewImage.src;
+      link.href = canvas.toDataURL("image/png");
       link.click();
-      preview.style.display = "none";
     });
 
-    // ✅ 撮り直し
-    document.getElementById("closePreview").addEventListener("click", () => {
-      preview.style.display = "none";
+    // 完了（アプリに戻る）
+    doneBtn.addEventListener("click", ()=>{
+      window.location.href = "thunkable://return"; // Deep Link
     });
 
-    // 初期化
     startCam();
-    updateOverlay();
   </script>
 </body>
 </html>
