@@ -25,7 +25,7 @@
       }
 
       img#overlay {
-        position: fixed;
+        position: absolute;
         bottom: 5%;
         right: 30%;
         transform: translateX(50%);
@@ -86,16 +86,22 @@
         // 背景（カメラ）
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // オーバーレイ（キャラ画像）
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = overlay.src;
-        img.onload = () => {
-          const overlayWidth = canvas.width * 0.6; // 60%
-          const overlayHeight = (img.height / img.width) * overlayWidth;
-          const x = (canvas.width - overlayWidth) / 2;
-          const y = canvas.height - overlayHeight - 50;
-          context.drawImage(img, x, y, overlayWidth, overlayHeight);
+        // overlay の座標とサイズを画面上から取得して canvas に変換
+      const videoRect = video.getBoundingClientRect();
+      const overlayRect = overlay.getBoundingClientRect();
+      const scaleX = canvas.width / videoRect.width;
+      const scaleY = canvas.height / videoRect.height;
+
+      const x = (overlayRect.left - videoRect.left) * scaleX;
+      const y = (overlayRect.top - videoRect.top) * scaleY;
+      const w = overlayRect.width * scaleX;
+      const h = overlayRect.height * scaleY;
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = overlay.src;
+      img.onload = () => {
+        ctx.drawImage(img, x, y, w, h);
 
           // 保存
           const link = document.createElement("a");
@@ -109,4 +115,5 @@
     </script>
   </body>
 </html>
+
 
