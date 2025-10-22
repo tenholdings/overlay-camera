@@ -4,27 +4,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { margin:0; overflow:hidden; background:black; display:flex; justify-content:center; align-items:center; flex-direction:column; }
-    #cam, #overlay { position: absolute; top:0; left:0; width:100vw; height:100vh; object-fit:cover; }
+    #container { position: relative; width: 100vw; height: 100vh; overflow:hidden; }
+    #cam, #overlay, #preview { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; }
     #overlay { cursor: move; z-index:2; opacity:0.95; }
-    #preview { display:none; width:100vw; height:100vh; object-fit:contain; z-index:3; }
-    #buttons { position:absolute; bottom:20px; z-index:4; display:flex; gap:10px; }
+    #preview { display:none; object-fit:contain; z-index:3; background:black; }
+    #buttons { position:absolute; bottom:20px; z-index:4; display:flex; gap:10px; width:100%; justify-content:center; }
     button { padding:10px 20px; font-size:16px; border:none; border-radius:8px; background:#ff4081; color:white; }
   </style>
 </head>
 <body>
-  <video id="cam" autoplay playsinline></video>
-  <img id="overlay" src="" alt="overlay">
-  <img id="preview" alt="preview">
-  
+  <div id="container">
+    <video id="cam" autoplay playsinline></video>
+    <img id="overlay" src="">
+    <img id="preview">
+  </div>
+
   <div id="buttons">
     <button id="capture">📸 撮影</button>
     <button id="retake" style="display:none;">🔄 撮り直す</button>
     <button id="save" style="display:none;">💾 保存</button>
     <button id="done" style="display:none;">✅ 完了</button>
   </div>
-  
+
   <canvas id="canvas" style="display:none;"></canvas>
-  
+
   <script>
     async function startCam() {
       try {
@@ -35,7 +38,7 @@
       }
     }
 
-    // URLパラメータからオーバーレイ画像
+    // URLパラメータからオーバーレイ画像取得
     const params = new URLSearchParams(window.location.search);
     const imgURL = params.get("img");
     if (imgURL) document.getElementById("overlay").src = imgURL;
@@ -50,13 +53,29 @@
     const doneBtn = document.getElementById("done");
 
     // ドラッグでオーバーレイ移動
-    let isDragging = false, offsetX=0, offsetY=0;
-    overlay.addEventListener("mousedown", e => { isDragging=true; offsetX=e.offsetX; offsetY=e.offsetY; });
-    overlay.addEventListener("mousemove", e => { if(isDragging){ overlay.style.left=(e.pageX-offsetX)+"px"; overlay.style.top=(e.pageY-offsetY)+"px"; } });
-    overlay.addEventListener("mouseup", e=>{ isDragging=false; });
-    overlay.addEventListener("touchstart", e => { isDragging=true; const t=e.touches[0]; offsetX=t.clientX-overlay.offsetLeft; offsetY=t.clientY-overlay.offsetTop; });
-    overlay.addEventListener("touchmove", e => { if(isDragging){ const t=e.touches[0]; overlay.style.left=(t.clientX-offsetX)+"px"; overlay.style.top=(t.clientY-offsetY)+"px"; } });
-    overlay.addEventListener("touchend", e=>{ isDragging=false; });
+    let isDragging = false, startX, startY, initialLeft, initialTop;
+    const startDrag = (x, y) => {
+      isDragging = true;
+      startX = x; startY = y;
+      const rect = overlay.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+    };
+    const moveDrag = (x, y) => {
+      if (!isDragging) return;
+      const dx = x - startX;
+      const dy = y - startY;
+      overlay.style.left = `${initialLeft + dx}px`;
+      overlay.style.top = `${initialTop + dy}px`;
+    };
+    const endDrag = () => { isDragging = false; };
+
+    overlay.addEventListener("mousedown", e => startDrag(e.clientX, e.clientY));
+    window.addEventListener("mousemove", e => moveDrag(e.clientX, e.clientY));
+    window.addEventListener("mouseup", endDrag);
+    overlay.addEventListener("touchstart", e => { const t=e.touches[0]; startDrag(t.clientX, t.clientY); });
+    window.addEventListener("touchmove", e => { const t=e.touches[0]; moveDrag(t.clientX, t.clientY); });
+    window.addEventListener("touchend", endDrag);
 
     // 撮影
     captureBtn.addEventListener("click", ()=>{
@@ -69,11 +88,15 @@
       img.crossOrigin = "anonymous";
       img.src = overlay.src;
       img.onload = ()=>{
-        const overlayWidth = canvas.width * 0.6;
-        const overlayHeight = (img.height/img.width)*overlayWidth;
-        const x = parseFloat(overlay.style.left || canvas.width*0.2);
-        const y = parseFloat(overlay.style.top || canvas.height*0.3);
-        ctx.drawImage(img, x, y, overlayWidth, overlayHeight);
+        const rect = overlay.getBoundingClientRect();
+        const videoRect = cam.getBoundingClientRect();
+        const scaleX = canvas.width / videoRect.width;
+        const scaleY = canvas.height / videoRect.height;
+        const x = (rect.left - videoRect.left) * scaleX;
+        const y = (rect.top - videoRect.top) * scaleY;
+        const w = rect.width * scaleX;
+        const h = rect.height * scaleY;
+        ctx.drawImage(img, x, y, w, h);
 
         preview.src = canvas.toDataURL("image/png");
         preview.style.display="block";
@@ -101,9 +124,9 @@
       link.click();
     });
 
-    // 完了（アプリに戻る）
+    // 完了（Thunkable戻る用）
     doneBtn.addEventListener("click", ()=>{
-      window.location.href = "thunkable://return"; // Deep Link
+      window.location.href = "thunkable://return";
     });
 
     startCam();
