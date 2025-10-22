@@ -20,6 +20,7 @@
       z-index:2; cursor:move; opacity:0.95;
       touch-action:none;
       transform-origin: center center;
+      pointer-events:auto; 
     }
     #preview {
       display:none; z-index:3;
@@ -127,6 +128,8 @@
 
     // ===== 撮影 =====
     captureBtn.addEventListener("click", ()=>{
+      overlay.style.pointerEvents = "none";
+      setTimeout(()=>{ overlay.style.pointerEvents = "auto"; }, 1000);
       canvas.width = cam.videoWidth;
       canvas.height = cam.videoHeight;
       const ctx = canvas.getContext("2d");
@@ -176,3 +179,4 @@
   </script>
 </body>
 </html>
+
