@@ -41,6 +41,22 @@
     z-index: 3;
   }
 
+  /* 撮影前ボタン（中央下） */
+  #capture {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+    padding: 10px 30px;
+    font-size: 16px;
+      border: none;
+      border-radius: 50px;
+      background: #ff6b9a;
+      color: white;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    }
+
   #buttons {
     position: absolute;
     bottom: 70px; /* ✅ スマホのUIに被らない高さ */
@@ -48,16 +64,18 @@
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 10px;
+    gap: 8px;
   }
 
   button {
-    padding: 10px 20px;
-    font-size: 16px;
+    padding: 6px 12px;
+    font-size: 14px;
     border: none;
-    border-radius: 8px;
-    background: #ff4081;
+    border-radius: 6px;
+    background: #ff6b9a;
     color: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+    transition: 0.2s;
   }
 
   #canvas {
@@ -223,3 +241,4 @@
   </script>
 </body>
 </html>
+
