@@ -34,7 +34,6 @@
     touch-action: none;
     transform-origin: center center;
     opacity: 0.95;
-    object-fit:contain;
   }
 
   #preview {
@@ -210,42 +209,45 @@
     });
     overlay.addEventListener("touchend", ()=> isDragging=false);
 
-    // ======== 撮影 ========
-    captureBtn.addEventListener("click", ()=>{
+    // ======== 撮影（修正版） ========
+    captureBtn.addEventListener("click", async () => {
       if (!cam.videoWidth) {
         alert("カメラの準備中です");
         return;
       }
 
-      // ✅ videoサイズに完全一致
-      canvas.width = cam.videoWidth;
-      canvas.height = cam.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
+      try {
+        canvas.width = cam.videoWidth;
+        canvas.height = cam.videoHeight;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
 
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.src = overlay.src;
-      img.onload = ()=>{
-         // ✅ 表示比率から内部比率に合わせて補正
-        const videoAspect = cam.videoWidth / cam.videoHeight;
-        const screenAspect = window.innerWidth / window.innerHeight;
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = overlay.src;
+        await img.decode();
 
-        let drawWidth = img.width * scale;
-        let drawHeight = img.height * scale;
-        let drawX = (canvas.width / 2 - drawWidth / 2) + (translateX * (cam.videoWidth / window.innerWidth));
-        let drawY = (canvas.height / 2 - drawHeight / 2) + (translateY * (cam.videoHeight / window.innerHeight));
+        const scaleX = cam.videoWidth / window.innerWidth;
+        const scaleY = cam.videoHeight / window.innerHeight;
 
-        ctx.drawImage(img, x, y, Width, Height);
+        const drawWidth = img.width * scale;
+        const drawHeight = img.height * scale;
+        const drawX = (canvas.width / 2 - drawWidth / 2) + translateX * scaleX;
+        const drawY = (canvas.height / 2 - drawHeight / 2) + translateY * scaleY;
+
+        ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
 
         preview.src = canvas.toDataURL("image/png");
-        preview.style.display="block";
-        cam.style.display="none";
-        overlay.style.display="none";
-        captureBtn.style.display="none";
-        switchBtn.style.display="none";
-        postButtons.style.display="flex";
-      };
+        preview.style.display = "block";
+        cam.style.display = "none";
+        overlay.style.display = "none";
+        captureBtn.style.display = "none";
+        switchBtn.style.display = "none";
+        postButtons.style.display = "flex";
+      } catch (err) {
+        console.error("撮影処理中にエラー:", err);
+        alert("撮影に失敗しました。もう一度お試しください。");
+      }
     });
 
     // ======== 撮り直し ========
@@ -275,5 +277,3 @@
   </script>
 </body>
 </html>
-
-
