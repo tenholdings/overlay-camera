@@ -9,9 +9,9 @@
     padding: 0;
     width: 100vw;
     height: 100vh;
-    overflow: hidden; /* ✅ スクロール禁止 */
+    overflow: hidden;
     background: black;
-    touch-action: none; /* ✅ ページ自体のスクロール無効 */
+    touch-action: none;
   }
 
   #container {
@@ -41,41 +41,41 @@
     z-index: 3;
   }
 
-  /* 撮影前ボタン（中央下） */
+  /* ✅ 撮影ボタン：中央下に大きめ1つ */
   #capture {
     position: absolute;
-    bottom: 60px;
+    bottom: 50px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 10;
-    padding: 10px 30px;
-    font-size: 16px;
-      border: none;
-      border-radius: 50px;
-      background: #ff6b9a;
-      color: white;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-    }
+    padding: 14px 40px;
+    font-size: 18px;
+    border: none;
+    border-radius: 30px;
+    background: #ff4081;
+    color: white;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  }
 
+  /* ✅ 撮影後ボタン（🔄💾✅）をまとめて横並び・小さめ */
   #buttons {
     position: absolute;
-    bottom: 70px; /* ✅ スマホのUIに被らない高さ */
-    z-index: 4;
+    bottom: 35px;
     left: 50%;
     transform: translateX(-50%);
+    z-index: 10;
     display: flex;
     gap: 8px;
   }
 
-  button {
+  #retake, #save, #done {
+    display: none;
     padding: 6px 12px;
     font-size: 14px;
     border: none;
-    border-radius: 6px;
-    background: #ff6b9a;
+    border-radius: 8px;
+    background: rgba(255, 64, 129, 0.9);
     color: white;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.25);
-    transition: 0.2s;
   }
 
   #canvas {
@@ -241,4 +241,3 @@
   </script>
 </body>
 </html>
-
