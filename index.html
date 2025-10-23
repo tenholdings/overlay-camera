@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
   html, body {
@@ -9,7 +8,7 @@
     padding: 0;
     width: 100vw;
     height: 100vh;
-    overflow: hidden; /* ✅ スクロール禁止 */
+    overflow: hidden; /* ✅ スクロール防止 */
     background: black;
     touch-action: none; /* ✅ ページ自体のスクロール無効 */
   }
@@ -26,7 +25,7 @@
     top: 0; left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain; /* ✅ 画像切れ防止 */
   }
 
   #overlay {
@@ -34,6 +33,7 @@
     cursor: grab;
     touch-action: none;
     transform-origin: center center;
+    opacity: 0.95;
   }
 
   #preview {
@@ -41,23 +41,41 @@
     z-index: 3;
   }
 
-  #buttons {
+  /* 撮影ボタン（撮影前） */
+  #capture {
     position: absolute;
-    bottom: 50px; /* ✅ スマホのUIに被らない高さ */
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 4;
+    padding: 15px 40px;
+    font-size: 20px;
+    border: none;
+    border-radius: 50px;
+    background: #ff6b9a;
+    color: white;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+  }
+
+  /* 撮影後の3つのボタン（控えめ＆横並び） */
+  #postButtons {
+    position: absolute;
+    bottom: 25px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     gap: 10px;
+    z-index: 5;
   }
 
-  button {
-    padding: 10px 20px;
+  #postButtons button {
+    padding: 8px 14px;
     font-size: 14px;
     border: none;
-    border-radius: 8px;
+    border-radius: 6px;
     background: #ff6b9a;
     color: white;
+    opacity: 0.9;
   }
 
   #canvas {
@@ -72,11 +90,12 @@
     <img id="preview">
   </div>
 
-  <div id="buttons">
-    <button id="capture">📸 撮影</button>
-    <button id="retake" style="display:none;">🔄 撮り直す</button>
-    <button id="save" style="display:none;">💾 保存</button>
-    <button id="done" style="display:none;">✅ 完了</button>
+  <button id="capture">📸 撮影</button>
+
+  <div id="postButtons" style="display:none;">
+    <button id="retake">🔄 撮り直す</button>
+    <button id="save">💾 保存</button>
+    <button id="done">✅ 完了</button>
   </div>
 
   <canvas id="canvas"></canvas>
@@ -87,6 +106,7 @@
     const preview = document.getElementById("preview");
     const canvas = document.getElementById("canvas");
     const captureBtn = document.getElementById("capture");
+    const postButtons = document.getElementById("postButtons");
     const retakeBtn = document.getElementById("retake");
     const saveBtn = document.getElementById("save");
     const doneBtn = document.getElementById("done");
@@ -189,9 +209,7 @@
         cam.style.display="none";
         overlay.style.display="none";
         captureBtn.style.display="none";
-        retakeBtn.style.display="inline";
-        saveBtn.style.display="inline";
-        doneBtn.style.display="inline";
+        postButtons.style.display="flex";
       };
     });
 
@@ -201,9 +219,7 @@
       cam.style.display="block";
       overlay.style.display="block";
       captureBtn.style.display="inline";
-      retakeBtn.style.display="none";
-      saveBtn.style.display="none";
-      doneBtn.style.display="none";
+      postButtons.style.display="none";
     });
 
     // ======== 保存 ========
