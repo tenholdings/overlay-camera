@@ -8,9 +8,9 @@
     padding: 0;
     width: 100vw;
     height: 100vh;
-    overflow: hidden; /* ✅ スクロール防止 */
+    overflow: hidden;
     background: black;
-    touch-action: none; /* ✅ ページ自体のスクロール無効 */
+    touch-action: none;
   }
 
   #container {
@@ -25,7 +25,7 @@
     top: 0; left: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain; /* ✅ 画像切れ防止 */
+    object-fit: cover; /* ✅ フルサイズで表示 */
   }
 
   #overlay {
@@ -41,7 +41,7 @@
     z-index: 3;
   }
 
-  /* 撮影ボタン（撮影前） */
+  /* 撮影ボタン */
   #capture {
     position: absolute;
     bottom: 30px;
@@ -57,7 +57,7 @@
     box-shadow: 0 3px 10px rgba(0,0,0,0.3);
   }
 
-  /* 撮影後の3つのボタン（控えめ＆横並び） */
+  /* 撮影後ボタン */
   #postButtons {
     position: absolute;
     bottom: 25px;
@@ -78,9 +78,22 @@
     opacity: 0.9;
   }
 
-  #canvas {
-    display: none;
+  /* 🔄 カメラ切替ボタン（右上に小さく） */
+  #switchCam {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 6;
+    background: rgba(255,255,255,0.3);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
   }
+
+  #canvas { display: none; }
 </style>
 </head>
 <body>
@@ -90,6 +103,7 @@
     <img id="preview">
   </div>
 
+  <button id="switchCam">🔄</button>
   <button id="capture">📸 撮影</button>
 
   <div id="postButtons" style="display:none;">
@@ -110,16 +124,31 @@
     const retakeBtn = document.getElementById("retake");
     const saveBtn = document.getElementById("save");
     const doneBtn = document.getElementById("done");
+    const switchBtn = document.getElementById("switchCam");
+
+    let facing = "user"; // 👈 イン・アウト切替用
 
     // ======== カメラ起動 ========
     async function startCam() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (window.stream) {
+          window.stream.getTracks().forEach(t => t.stop());
+        }
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: facing }
+        });
         cam.srcObject = stream;
+        window.stream = stream;
       } catch (err) {
         alert("カメラにアクセスできません: " + err);
       }
     }
+
+    // ======== カメラ切替 ========
+    switchBtn.addEventListener("click", () => {
+      facing = (facing === "user") ? "environment" : "user";
+      startCam();
+    });
 
     // ======== URLパラメータから画像読み込み ========
     const params = new URLSearchParams(window.location.search);
@@ -131,7 +160,6 @@
     let translateX = 0, translateY = 0;
     let scale = 1, startDist = 0, startScale = 1;
 
-    // PC用
     overlay.addEventListener("mousedown", e => {
       isDragging = true;
       startX = e.clientX;
@@ -147,7 +175,6 @@
     });
     window.addEventListener("mouseup", ()=> isDragging=false);
 
-    // タッチ用（スマホ）
     overlay.addEventListener("touchstart", e => {
       if(e.touches.length === 1){
         isDragging = true;
@@ -189,6 +216,7 @@
         return;
       }
 
+      // ✅ videoサイズに完全一致
       canvas.width = cam.videoWidth;
       canvas.height = cam.videoHeight;
       const ctx = canvas.getContext("2d");
@@ -200,8 +228,13 @@
       img.onload = ()=>{
         const overlayWidth = img.width * scale;
         const overlayHeight = img.height * scale;
-        const x = (canvas.width/2 - overlayWidth/2) + translateX;
-        const y = (canvas.height/2 - overlayHeight/2) + translateY;
+
+        // ✅ translateを画面→キャンバス座標に補正
+        const ratioX = canvas.width / window.innerWidth;
+        const ratioY = canvas.height / window.innerHeight;
+        const x = (canvas.width / 2 - overlayWidth / 2) + translateX * ratioX;
+        const y = (canvas.height / 2 - overlayHeight / 2) + translateY * ratioY;
+
         ctx.drawImage(img, x, y, overlayWidth, overlayHeight);
 
         preview.src = canvas.toDataURL("image/png");
@@ -209,6 +242,7 @@
         cam.style.display="none";
         overlay.style.display="none";
         captureBtn.style.display="none";
+        switchBtn.style.display="none";
         postButtons.style.display="flex";
       };
     });
@@ -219,6 +253,7 @@
       cam.style.display="block";
       overlay.style.display="block";
       captureBtn.style.display="inline";
+      switchBtn.style.display="inline";
       postButtons.style.display="none";
     });
 
@@ -230,7 +265,7 @@
       link.click();
     });
 
-    // ======== 完了（Thunkableに戻る） ========
+    // ======== 完了 ========
     doneBtn.addEventListener("click", ()=>{
       window.location.href = "thunkable://return";
     });
