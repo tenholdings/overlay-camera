@@ -25,7 +25,7 @@
     top: 0; left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover; /* ✅ フルサイズで表示 */
+    object-fit: contain; /* ✅ フルサイズで表示 */
   }
 
   #overlay {
@@ -34,6 +34,7 @@
     touch-action: none;
     transform-origin: center center;
     opacity: 0.95;
+    object-fit:contain;
   }
 
   #preview {
@@ -217,8 +218,9 @@
       }
 
       // ✅ videoサイズに完全一致
-      canvas.width = cam.videoWidth;
-      canvas.height = cam.videoHeight;
+      const rect = cam.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
 
@@ -226,16 +228,13 @@
       img.crossOrigin = "anonymous";
       img.src = overlay.src;
       img.onload = ()=>{
-        const overlayWidth = img.width * scale;
-        const overlayHeight = img.height * scale;
+        const overlayRect = overlay.getBoundingClientRect();
+        const x = overlayRect.left - rect.left;
+        const y = overlayRect.top - rect.top;
+        const width = overlayRect.width;
+        const height = overlayRect.height;
 
-        // ✅ translateを画面→キャンバス座標に補正
-        const ratioX = canvas.width / window.innerWidth;
-        const ratioY = canvas.height / window.innerHeight;
-        const x = (canvas.width / 2 - overlayWidth / 2) + translateX * ratioX;
-        const y = (canvas.height / 2 - overlayHeight / 2) + translateY * ratioY;
-
-        ctx.drawImage(img, x, y, overlayWidth, overlayHeight);
+        ctx.drawImage(img, x, y, Width, Height);
 
         preview.src = canvas.toDataURL("image/png");
         preview.style.display="block";
@@ -274,3 +273,4 @@
   </script>
 </body>
 </html>
+
