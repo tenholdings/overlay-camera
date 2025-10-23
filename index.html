@@ -220,7 +220,25 @@ captureBtn.addEventListener("click", async () => {
     canvas.width = cam.videoWidth;
     canvas.height = cam.videoHeight;
     const ctx = canvas.getContext("2d");
-    ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
+ 　  // ✅ カメラ映像の縦横比を保ったまま描画
+    const videoRatio = cam.videoWidth / cam.videoHeight;
+    const canvasRatio = canvas.width / canvas.height;
+
+    let sx = 0, sy = 0, sWidth = cam.videoWidth, sHeight = cam.videoHeight;
+
+    if (videoRatio > canvasRatio) {
+      // 横が長い → 左右をカット
+      const newWidth = cam.videoHeight * canvasRatio;
+      sx = (cam.videoWidth - newWidth) / 2;
+      sWidth = newWidth;
+    } else {
+      // 縦が長い → 上下をカット
+      const newHeight = cam.videoWidth / canvasRatio;
+      sy = (cam.videoHeight - newHeight) / 2;
+      sHeight = newHeight;
+    }
+
+    ctx.drawImage(cam, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
 
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -288,3 +306,4 @@ captureBtn.addEventListener("click", async () => {
   </script>
 </body>
 </html>
+
