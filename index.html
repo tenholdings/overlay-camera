@@ -218,9 +218,8 @@
       }
 
       // ✅ videoサイズに完全一致
-      const rect = cam.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      canvas.width = cam.videoWidth;
+      canvas.height = cam.videoHeight;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
 
@@ -228,11 +227,14 @@
       img.crossOrigin = "anonymous";
       img.src = overlay.src;
       img.onload = ()=>{
-        const overlayRect = overlay.getBoundingClientRect();
-        const x = overlayRect.left - rect.left;
-        const y = overlayRect.top - rect.top;
-        const width = overlayRect.width;
-        const height = overlayRect.height;
+         // ✅ 表示比率から内部比率に合わせて補正
+        const videoAspect = cam.videoWidth / cam.videoHeight;
+        const screenAspect = window.innerWidth / window.innerHeight;
+
+        let drawWidth = img.width * scale;
+        let drawHeight = img.height * scale;
+        let drawX = (canvas.width / 2 - drawWidth / 2) + (translateX * (cam.videoWidth / window.innerWidth));
+        let drawY = (canvas.height / 2 - drawHeight / 2) + (translateY * (cam.videoHeight / window.innerHeight));
 
         ctx.drawImage(img, x, y, Width, Height);
 
@@ -273,4 +275,5 @@
   </script>
 </body>
 </html>
+
 
