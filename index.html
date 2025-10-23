@@ -209,35 +209,43 @@
     });
     overlay.addEventListener("touchend", ()=> isDragging=false);
 
-    // ======== 撮影（修正版） ========
-    captureBtn.addEventListener("click", async () => {
-      if (!cam.videoWidth) {
-        alert("カメラの準備中です");
-        return;
-      }
+    // ======== 撮影 ========
+  captureBtn.addEventListener("click", async ()=>{
+    if (!cam.videoWidth || !cam.videoHeight) {
+      alert("カメラの準備中です");
+      return;
+    }
 
-      try {
-        canvas.width = cam.videoWidth;
-        canvas.height = cam.videoHeight;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
+    // ✅ videoサイズに合わせてCanvas設定
+    canvas.width = cam.videoWidth;
+    canvas.height = cam.videoHeight;
+    const ctx = canvas.getContext("2d");
 
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = overlay.src;
-        img.onload = () => {
+    try {
+      // ✅ カメラ映像を先に描画
+      ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
 
-        const scaleX = cam.videoWidth / window.innerWidth;
-        const scaleY = cam.videoHeight / window.innerHeight;
+      // ✅ overlay画像をロードしてから合成
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = overlay.src;
 
-         const rect = overlay.getBoundingClientRect(); // 実際の見た目の位置サイズを取得
-         const containerRect = document.getElementById("container").getBoundingClientRect();
+      img.onload = () => {
+        const container = document.getElementById("container");
+        if (!container) return;
 
-         const offsetX = (rect.left - containerRect.left) * scaleX;
-         const offsetY = (rect.top - containerRect.top) * scaleY;
-         const drawWidth = rect.width * scaleX;
-         const drawHeight = rect.height * scaleY;
+        const rect = overlay.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
 
+        // ✅ 画面→カメラ画像ピクセル補正
+        const scaleX = cam.videoWidth / containerRect.width;
+        const scaleY = cam.videoHeight / containerRect.height;
+
+        const offsetX = (rect.left - containerRect.left) * scaleX;
+        const offsetY = (rect.top - containerRect.top) * scaleY;
+        const drawWidth = rect.width * scaleX;
+        const drawHeight = rect.height * scaleY;
+      
         ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
 
         preview.src = canvas.toDataURL("image/png");
@@ -280,4 +288,5 @@
   </script>
 </body>
 </html>
+
 
