@@ -1,176 +1,225 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
-  body {
+  html, body {
     margin: 0;
-    overflow: hidden;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden; /* ✅ スクロール禁止 */
     background: black;
+    touch-action: none; /* ✅ ページ自体のスクロール無効 */
   }
 
-  #camera-container {
+  #container {
     position: relative;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
   }
 
-  video, canvas, #overlay {
+  #cam, #overlay, #preview {
     position: absolute;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
 
   #overlay {
-    touch-action: none;
     z-index: 2;
+    cursor: grab;
+    touch-action: none;
+    transform-origin: center center;
   }
 
-  /* 撮影ボタン */
-  #capture {
-    position: absolute;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10;
-    padding: 15px 40px;
-    font-size: 20px;
-    border: none;
-    border-radius: 50px;
-    background: #ff4081;
-    color: white;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
-  }
-
-  /* 撮影後のボタン */
-  #after-buttons {
+  #preview {
     display: none;
+    z-index: 3;
+  }
+
+  #buttons {
     position: absolute;
-    bottom: 40px;
+    bottom: 50px; /* ✅ スマホのUIに被らない高さ */
+    z-index: 4;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 10;
     display: flex;
     gap: 10px;
   }
 
-  #after-buttons button {
-    padding: 8px 16px;
+  button {
+    padding: 10px 20px;
     font-size: 14px;
     border: none;
-    border-radius: 20px;
-    background: rgba(255, 255, 255, 0.85);
-    color: #333;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    border-radius: 8px;
+    background: #ff6b9a;
+    color: white;
+  }
+
+  #canvas {
+    display: none;
   }
 </style>
 </head>
 <body>
-
-<div id="camera-container">
-  <video id="video" autoplay playsinline></video>
-  <img id="overlay" src="overlay.png">
-  <canvas id="canvas"></canvas>
-  <button id="capture">📸 撮影</button>
-  <div id="after-buttons">
-    <button id="retry">🔄 取り直し</button>
-    <button id="save">💾 保存</button>
-    <button id="ok">✅ 決定</button>
+  <div id="container">
+    <video id="cam" autoplay playsinline></video>
+    <img id="overlay" src="">
+    <img id="preview">
   </div>
-</div>
 
-<script>
-const video = document.getElementById('video');
-const canvas = document.getElementById('canvas');
-const overlay = document.getElementById('overlay');
-const captureBtn = document.getElementById('capture');
-const afterButtons = document.getElementById('after-buttons');
+  <div id="buttons">
+    <button id="capture">📸 撮影</button>
+    <button id="retake" style="display:none;">🔄 撮り直す</button>
+    <button id="save" style="display:none;">💾 保存</button>
+    <button id="done" style="display:none;">✅ 完了</button>
+  </div>
 
-navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-  .then(stream => video.srcObject = stream)
-  .catch(err => alert('カメラを起動できません: ' + err));
+  <canvas id="canvas"></canvas>
 
-/* オーバーレイ移動・拡大縮小 */
-let startX, startY, scale = 1, currentX = 0, currentY = 0;
+  <script>
+    const cam = document.getElementById("cam");
+    const overlay = document.getElementById("overlay");
+    const preview = document.getElementById("preview");
+    const canvas = document.getElementById("canvas");
+    const captureBtn = document.getElementById("capture");
+    const retakeBtn = document.getElementById("retake");
+    const saveBtn = document.getElementById("save");
+    const doneBtn = document.getElementById("done");
 
-overlay.addEventListener('touchstart', e => {
-  if (e.touches.length === 1) {
-    startX = e.touches[0].clientX - currentX;
-    startY = e.touches[0].clientY - currentY;
-  } else if (e.touches.length === 2) {
-    const dx = e.touches[1].clientX - e.touches[0].clientX;
-    const dy = e.touches[1].clientY - e.touches[0].clientY;
-    overlay.dataset.initialDist = Math.hypot(dx, dy);
-  }
-});
+    // ======== カメラ起動 ========
+    async function startCam() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        cam.srcObject = stream;
+      } catch (err) {
+        alert("カメラにアクセスできません: " + err);
+      }
+    }
 
-overlay.addEventListener('touchmove', e => {
-  e.preventDefault();
-  if (e.touches.length === 1) {
-    currentX = e.touches[0].clientX - startX;
-    currentY = e.touches[0].clientY - startY;
-    overlay.style.transform = `translate(${currentX}px, ${currentY}px) scale(${scale})`;
-  } else if (e.touches.length === 2) {
-    const dx = e.touches[1].clientX - e.touches[0].clientX;
-    const dy = e.touches[1].clientY - e.touches[0].clientY;
-    const newDist = Math.hypot(dx, dy);
-    const factor = newDist / overlay.dataset.initialDist;
-    scale = factor;
-    overlay.style.transform = `translate(${currentX}px, ${currentY}px) scale(${scale})`;
-  }
-});
+    // ======== URLパラメータから画像読み込み ========
+    const params = new URLSearchParams(window.location.search);
+    const imgURL = params.get("img");
+    if (imgURL) overlay.src = imgURL;
 
-/* 撮影処理 */
-captureBtn.addEventListener('click', () => {
-  const width = video.videoWidth;
-  const height = video.videoHeight;
-  canvas.width = width;
-  canvas.height = height;
+    // ======== 位置・スケール制御 ========
+    let isDragging = false, startX=0, startY=0;
+    let translateX = 0, translateY = 0;
+    let scale = 1, startDist = 0, startScale = 1;
 
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, width, height);
+    // PC用
+    overlay.addEventListener("mousedown", e => {
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+    });
+    window.addEventListener("mousemove", e => {
+      if(isDragging){
+        translateX += e.clientX - startX;
+        translateY += e.clientY - startY;
+        overlay.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        startX = e.clientX; startY = e.clientY;
+      }
+    });
+    window.addEventListener("mouseup", ()=> isDragging=false);
 
-  // overlay描画（ズレ修正）
-  const overlayRect = overlay.getBoundingClientRect();
-  const videoRect = video.getBoundingClientRect();
-  const scaleX = width / videoRect.width;
-  const scaleY = height / videoRect.height;
-  const overlayWidth = overlayRect.width * scaleX;
-  const overlayHeight = overlayRect.height * scaleY;
-  const overlayX = (overlayRect.left - videoRect.left) * scaleX;
-  const overlayY = (overlayRect.top - videoRect.top) * scaleY;
+    // タッチ用（スマホ）
+    overlay.addEventListener("touchstart", e => {
+      if(e.touches.length === 1){
+        isDragging = true;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      } else if(e.touches.length === 2){
+        isDragging = false;
+        startDist = Math.hypot(
+          e.touches[1].clientX - e.touches[0].clientX,
+          e.touches[1].clientY - e.touches[0].clientY
+        );
+        startScale = scale;
+      }
+    });
 
-  ctx.drawImage(overlay, overlayX, overlayY, overlayWidth, overlayHeight);
+    overlay.addEventListener("touchmove", e => {
+      e.preventDefault();
+      if(e.touches.length === 1 && isDragging){
+        translateX += e.touches[0].clientX - startX;
+        translateY += e.touches[0].clientY - startY;
+        overlay.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+      } else if(e.touches.length === 2){
+        const newDist = Math.hypot(
+          e.touches[1].clientX - e.touches[0].clientX,
+          e.touches[1].clientY - e.touches[0].clientY
+        );
+        scale = startScale * (newDist / startDist);
+        overlay.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+      }
+    });
+    overlay.addEventListener("touchend", ()=> isDragging=false);
 
-  captureBtn.style.display = 'none';
-  afterButtons.style.display = 'flex';
-});
+    // ======== 撮影 ========
+    captureBtn.addEventListener("click", ()=>{
+      if (!cam.videoWidth) {
+        alert("カメラの準備中です");
+        return;
+      }
 
-/* 取り直し */
-document.getElementById('retry').addEventListener('click', () => {
-  afterButtons.style.display = 'none';
-  captureBtn.style.display = 'block';
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-});
+      canvas.width = cam.videoWidth;
+      canvas.height = cam.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
 
-/* 保存 */
-document.getElementById('save').addEventListener('click', () => {
-  const a = document.createElement('a');
-  a.href = canvas.toDataURL('image/png');
-  a.download = 'photo.png';
-  a.click();
-});
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = overlay.src;
+      img.onload = ()=>{
+        const overlayWidth = img.width * scale;
+        const overlayHeight = img.height * scale;
+        const x = (canvas.width/2 - overlayWidth/2) + translateX;
+        const y = (canvas.height/2 - overlayHeight/2) + translateY;
+        ctx.drawImage(img, x, y, overlayWidth, overlayHeight);
 
-/* 決定 */
-document.getElementById('ok').addEventListener('click', () => {
-  alert('✅ 決定されました（アプリ側で処理可）');
-});
-</script>
+        preview.src = canvas.toDataURL("image/png");
+        preview.style.display="block";
+        cam.style.display="none";
+        overlay.style.display="none";
+        captureBtn.style.display="none";
+        retakeBtn.style.display="inline";
+        saveBtn.style.display="inline";
+        doneBtn.style.display="inline";
+      };
+    });
 
+    // ======== 撮り直し ========
+    retakeBtn.addEventListener("click", ()=>{
+      preview.style.display="none";
+      cam.style.display="block";
+      overlay.style.display="block";
+      captureBtn.style.display="inline";
+      retakeBtn.style.display="none";
+      saveBtn.style.display="none";
+      doneBtn.style.display="none";
+    });
+
+    // ======== 保存 ========
+    saveBtn.addEventListener("click", ()=>{
+      const link = document.createElement("a");
+      link.download = "photo.png";
+      link.href = canvas.toDataURL("image/png");
+      link.click();
+    });
+
+    // ======== 完了（Thunkableに戻る） ========
+    doneBtn.addEventListener("click", ()=>{
+      window.location.href = "thunkable://return";
+    });
+
+    startCam();
+  </script>
 </body>
 </html>
