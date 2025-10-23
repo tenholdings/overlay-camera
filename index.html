@@ -21,12 +21,13 @@
     overflow: hidden;
   }
 
+  /* ✅ カメラとオーバーレイを同じ比率表示に */
   #cam, #overlay, #preview {
     position: absolute;
     top: 0; left: 0;
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: cover; /* ← 両方coverに統一 */
   }
 
   #overlay {
@@ -41,7 +42,7 @@
     z-index: 3;
   }
 
-  /* ✅ 撮影ボタン：中央下に大きめ1つ */
+  /* ✅ 撮影ボタン（中央下・大きめ） */
   #capture {
     position: absolute;
     bottom: 50px;
@@ -57,7 +58,7 @@
     box-shadow: 0 3px 8px rgba(0,0,0,0.3);
   }
 
-  /* ✅ 撮影後ボタン（🔄💾✅）をまとめて横並び・小さめ */
+  /* ✅ 撮影後ボタン群（小さめ横並び） */
   #buttons {
     position: absolute;
     bottom: 35px;
@@ -90,11 +91,11 @@
     <img id="preview">
   </div>
 
+  <button id="capture">📸 撮影</button>
   <div id="buttons">
-    <button id="capture">📸 撮影</button>
-    <button id="retake" style="display:none;">🔄 撮り直す</button>
-    <button id="save" style="display:none;">💾 保存</button>
-    <button id="done" style="display:none;">✅ 完了</button>
+    <button id="retake">🔄 撮り直す</button>
+    <button id="save">💾 保存</button>
+    <button id="done">✅ 完了</button>
   </div>
 
   <canvas id="canvas"></canvas>
@@ -109,27 +110,25 @@
     const saveBtn = document.getElementById("save");
     const doneBtn = document.getElementById("done");
 
-    // ======== カメラ起動 ========
     async function startCam() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
         cam.srcObject = stream;
       } catch (err) {
         alert("カメラにアクセスできません: " + err);
       }
     }
 
-    // ======== URLパラメータから画像読み込み ========
+    // URLパラメータから画像を取得
     const params = new URLSearchParams(window.location.search);
     const imgURL = params.get("img");
     if (imgURL) overlay.src = imgURL;
 
-    // ======== 位置・スケール制御 ========
+    // ======== 移動・拡大縮小 ========
     let isDragging = false, startX=0, startY=0;
     let translateX = 0, translateY = 0;
     let scale = 1, startDist = 0, startScale = 1;
 
-    // PC用
     overlay.addEventListener("mousedown", e => {
       isDragging = true;
       startX = e.clientX;
@@ -145,7 +144,6 @@
     });
     window.addEventListener("mouseup", ()=> isDragging=false);
 
-    // タッチ用（スマホ）
     overlay.addEventListener("touchstart", e => {
       if(e.touches.length === 1){
         isDragging = true;
@@ -160,7 +158,6 @@
         startScale = scale;
       }
     });
-
     overlay.addEventListener("touchmove", e => {
       e.preventDefault();
       if(e.touches.length === 1 && isDragging){
@@ -182,10 +179,7 @@
 
     // ======== 撮影 ========
     captureBtn.addEventListener("click", ()=>{
-      if (!cam.videoWidth) {
-        alert("カメラの準備中です");
-        return;
-      }
+      if (!cam.videoWidth) return alert("カメラの準備中です");
 
       canvas.width = cam.videoWidth;
       canvas.height = cam.videoHeight;
@@ -198,8 +192,8 @@
       img.onload = ()=>{
         const overlayWidth = img.width * scale;
         const overlayHeight = img.height * scale;
-        const x = (canvas.width/2 - overlayWidth/2) + translateX;
-        const y = (canvas.height/2 - overlayHeight/2) + translateY;
+        const x = (canvas.width / 2 - overlayWidth / 2) + translateX;
+        const y = (canvas.height / 2 - overlayHeight / 2) + translateY;
         ctx.drawImage(img, x, y, overlayWidth, overlayHeight);
 
         preview.src = canvas.toDataURL("image/png");
@@ -213,7 +207,6 @@
       };
     });
 
-    // ======== 撮り直し ========
     retakeBtn.addEventListener("click", ()=>{
       preview.style.display="none";
       cam.style.display="block";
@@ -224,7 +217,6 @@
       doneBtn.style.display="none";
     });
 
-    // ======== 保存 ========
     saveBtn.addEventListener("click", ()=>{
       const link = document.createElement("a");
       link.download = "photo.png";
@@ -232,7 +224,6 @@
       link.click();
     });
 
-    // ======== 完了（Thunkableに戻る） ========
     doneBtn.addEventListener("click", ()=>{
       window.location.href = "thunkable://return";
     });
