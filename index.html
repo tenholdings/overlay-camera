@@ -209,7 +209,7 @@
     });
     overlay.addEventListener("touchend", ()=> isDragging=false);
 
-    // ======== 撮影（ズレ補正版） ========
+ // ======== 撮影（contain対応・縦伸び防止版） ========
 captureBtn.addEventListener("click", async () => {
   if (!cam.videoWidth) {
     alert("カメラの準備中です");
@@ -217,48 +217,35 @@ captureBtn.addEventListener("click", async () => {
   }
 
   try {
+    // canvasサイズを映像の解像度に合わせる
     canvas.width = cam.videoWidth;
     canvas.height = cam.videoHeight;
     const ctx = canvas.getContext("2d");
- 　  // ✅ カメラ映像の縦横比を保ったまま描画
-    const videoRatio = cam.videoWidth / cam.videoHeight;
-    const canvasRatio = canvas.width / canvas.height;
 
-    let sx = 0, sy = 0, sWidth = cam.videoWidth, sHeight = cam.videoHeight;
+    // 📸 カメラ映像を描画（contain前提 → そのまま全体表示）
+    ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
 
-    if (videoRatio > canvasRatio) {
-      // 横が長い → 左右をカット
-      const newWidth = cam.videoHeight * canvasRatio;
-      sx = (cam.videoWidth - newWidth) / 2;
-      sWidth = newWidth;
-    } else {
-      // 縦が長い → 上下をカット
-      const newHeight = cam.videoWidth / canvasRatio;
-      sy = (cam.videoHeight - newHeight) / 2;
-      sHeight = newHeight;
-    }
-
-    ctx.drawImage(cam, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
-
+    // 🖼 overlay画像を読み込み
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = overlay.src;
     await img.decode();
 
-    // ✅ overlayの実際のCSSサイズを取得して比率補正
+    // overlayとcamの実際のDOM上サイズ取得
     const overlayRect = overlay.getBoundingClientRect();
     const camRect = cam.getBoundingClientRect();
 
+    // スクリーン上のサイズ → canvas上のピクセルに変換
     const scaleX = canvas.width / camRect.width;
     const scaleY = canvas.height / camRect.height;
 
-    // overlayが画面上でどこにあるかを元に座標変換
+    // overlayが表示されている位置とサイズを反映
     const drawX = (overlayRect.left - camRect.left) * scaleX;
     const drawY = (overlayRect.top - camRect.top) * scaleY;
     const drawWidth = overlayRect.width * scaleX;
     const drawHeight = overlayRect.height * scaleY;
 
-    // ✅ transformでの拡大・移動を維持
+    // ✅ transformの影響を反映して、縦伸び防止
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.translate(translateX * scaleX, translateY * scaleY);
@@ -266,6 +253,7 @@ captureBtn.addEventListener("click", async () => {
     ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
     ctx.restore();
 
+    // 📸 プレビュー表示
     preview.src = canvas.toDataURL("image/png");
     preview.style.display = "block";
     cam.style.display = "none";
@@ -278,6 +266,7 @@ captureBtn.addEventListener("click", async () => {
     alert("撮影に失敗しました。もう一度お試しください。");
   }
 });
+
 
     // ======== 撮り直し ========
     retakeBtn.addEventListener("click", ()=>{
@@ -306,4 +295,5 @@ captureBtn.addEventListener("click", async () => {
   </script>
 </body>
 </html>
+
 
