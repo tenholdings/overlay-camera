@@ -208,7 +208,7 @@
       }
     });
     overlay.addEventListener("touchend", ()=> isDragging=false);
-　　// ======== 撮影（縦伸び完全防止 + contain一致版） ========
+　// ======== 撮影（contain一致・伸び完全防止） ========
 captureBtn.addEventListener("click", async () => {
   if (!cam.videoWidth) {
     alert("カメラの準備中です");
@@ -216,30 +216,46 @@ captureBtn.addEventListener("click", async () => {
   }
 
   try {
-    // 📏 実際に画面上で見えているvideoサイズを基準にする
     const camRect = cam.getBoundingClientRect();
     const overlayRect = overlay.getBoundingClientRect();
 
-    // canvasを「見た目の表示サイズ」と同じ比率で作る
-    const ratio = cam.videoWidth / cam.videoHeight;
-    const canvasWidth = camRect.width * window.devicePixelRatio;
-    const canvasHeight = canvasWidth / ratio;
-
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
+    // 📏 canvasサイズ＝画面に見えてるvideo領域（物理ピクセル単位）
+    canvas.width = camRect.width * window.devicePixelRatio;
+    canvas.height = camRect.height * window.devicePixelRatio;
 
     const ctx = canvas.getContext("2d");
 
-    // 🖼 カメラ映像を見た目通りに描画
-    ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
+    // ✅ video映像のどの部分が実際に見えているか計算
+    const videoRatio = cam.videoWidth / cam.videoHeight;
+    const screenRatio = camRect.width / camRect.height;
 
-    // overlay画像を読み込み
+    let sx = 0, sy = 0, sWidth = cam.videoWidth, sHeight = cam.videoHeight;
+    if (videoRatio > screenRatio) {
+      // 横が長い → 左右カット
+      const newWidth = cam.videoHeight * screenRatio;
+      sx = (cam.videoWidth - newWidth) / 2;
+      sWidth = newWidth;
+    } else if (videoRatio < screenRatio) {
+      // 縦が長い → 上下カット
+      const newHeight = cam.videoWidth / screenRatio;
+      sy = (cam.videoHeight - newHeight) / 2;
+      sHeight = newHeight;
+    }
+
+    // 🎥 実際に見えていた領域だけを描画（contain対応）
+    ctx.drawImage(
+      cam,
+      sx, sy, sWidth, sHeight,
+      0, 0, canvas.width, canvas.height
+    );
+
+    // 🖼 overlay画像を重ねる
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = overlay.src;
     await img.decode();
 
-    // ✅ overlayの位置とサイズを比率で変換
+    // overlayの見た目位置をキャンバス座標に変換
     const scaleX = canvas.width / camRect.width;
     const scaleY = canvas.height / camRect.height;
 
@@ -248,7 +264,6 @@ captureBtn.addEventListener("click", async () => {
     const drawWidth = overlayRect.width * scaleX;
     const drawHeight = overlayRect.height * scaleY;
 
-    // ✅ transform適用（位置＋拡大縮小）
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.translate(translateX * scaleX, translateY * scaleY);
@@ -256,7 +271,6 @@ captureBtn.addEventListener("click", async () => {
     ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
     ctx.restore();
 
-    // 🎨 プレビュー表示
     preview.src = canvas.toDataURL("image/png");
     preview.style.display = "block";
     cam.style.display = "none";
@@ -269,6 +283,7 @@ captureBtn.addEventListener("click", async () => {
     alert("撮影に失敗しました。もう一度お試しください。");
   }
 });
+
 
     // ======== 撮り直し ========
     retakeBtn.addEventListener("click", ()=>{
@@ -297,6 +312,7 @@ captureBtn.addEventListener("click", async () => {
   </script>
 </body>
 </html>
+
 
 
 
