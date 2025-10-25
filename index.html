@@ -210,32 +210,43 @@ captureBtn.addEventListener("click", async () => {
   }
 
   try {
-    const camRect = cam.getBoundingClientRect();
-    const overlayRect = overlay.getBoundingClientRect();
+   // overlayの位置・サイズをcanvasに変換（transform scaleを反映）
+const camRect = cam.getBoundingClientRect();
+const overlayRect = overlay.getBoundingClientRect();
 
-    // ✅ video映像の実際の比率を保持
-    const videoRatio = cam.videoWidth / cam.videoHeight;
-    const screenRatio = camRect.width / camRect.height;
+// videoの実サイズに対する画面サイズ比を取得
+const videoW = cam.videoWidth;
+const videoH = cam.videoHeight;
+const viewW = camRect.width;
+const viewH = camRect.height;
 
-    let sx = 0, sy = 0, sWidth = cam.videoWidth, sHeight = cam.videoHeight;
-    if (videoRatio > screenRatio) {
-      const newWidth = cam.videoHeight * screenRatio;
-      sx = (cam.videoWidth - newWidth) / 2;
-      sWidth = newWidth;
-    } else if (videoRatio < screenRatio) {
-      const newHeight = cam.videoWidth / screenRatio;
-      sy = (cam.videoHeight - newHeight) / 2;
-      sHeight = newHeight;
-    }
+// coverモードでの切り取り補正
+const videoRatio = videoW / videoH;
+const viewRatio = viewW / viewH;
 
-    // ✅ キャンバスはvideoの実際の比率で固定
-    canvas.width = camRect.width;
-    canvas.height = camRect.height;
+let offsetX = 0, offsetY = 0, renderW = videoW, renderH = videoH;
+if (videoRatio > viewRatio) {
+  // 横が余る → 左右をカット
+  renderW = videoH * viewRatio;
+  offsetX = (videoW - renderW) / 2;
+} else if (videoRatio < viewRatio) {
+  // 縦が余る → 上下をカット
+  renderH = videoW / viewRatio;
+  offsetY = (videoH - renderH) / 2;
+}
 
-    const ctx = canvas.getContext("2d");
+// スクリーン→ビデオ座標変換スケール
+const scaleX = renderW / viewW;
+const scaleY = renderH / viewH;
 
-    // 🎥 カメラ映像を描画（contain一致）
-    ctx.drawImage(cam, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+// overlay位置をvideo座標に変換
+const drawX = (overlayRect.left - camRect.left + translateX) * scaleX + offsetX;
+const drawY = (overlayRect.top - camRect.top + translateY) * scaleY + offsetY;
+const drawWidth = overlayRect.width * scaleX * scale;
+const drawHeight = overlayRect.height * scaleY * scale;
+
+// 正しい位置に描画
+ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
 
     // 🖼 overlayを重ねる
     const img = new Image();
@@ -304,6 +315,7 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
 
