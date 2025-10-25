@@ -243,21 +243,26 @@ captureBtn.addEventListener("click", async () => {
     img.src = overlay.src;
     await img.decode();
 
-    // ✅ ピクセル比補正を排除して画面座標ベースで一致させる
+    
+ 　 // overlayの位置・サイズをcanvasに変換（transform scaleを反映）
     const scaleX = canvas.width / camRect.width;
     const scaleY = canvas.height / camRect.height;
 
-    const drawX = (overlayRect.left - camRect.left) * scaleX;
-    const drawY = (overlayRect.top - camRect.top) * scaleY;
-    const drawWidth = overlayRect.width * scaleX;
-    const drawHeight = overlayRect.height * scaleY;
+    // ✅ 縦横比を保つため、1つのスケール値に統一
+    const scaleFix = Math.min(scaleX, scaleY);
+
+    const drawX = (overlayRect.left - camRect.left) * scaleFix;
+    const drawY = (overlayRect.top - camRect.top) * scaleFix;
+    const drawWidth = overlayRect.width * scaleFix;
+    const drawHeight = overlayRect.height * scaleFix;
 
     ctx.save();
     ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.translate(translateX * scaleX, translateY * scaleY);
+    ctx.translate(translateX * scaleFix, translateY * scaleFix);
     ctx.scale(scale, scale);
     ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
     ctx.restore();
+
 
     // ✅ プレビュー設定（containで縦横比固定）
     preview.src = canvas.toDataURL("image/png");
@@ -304,4 +309,5 @@ startCam();
 </script>
 </body>
 </html>
+
 
