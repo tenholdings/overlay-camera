@@ -210,67 +210,66 @@ captureBtn.addEventListener("click", async () => {
   }
 
   try {
-   // overlayの位置・サイズをcanvasに変換（transform scaleを反映）
-const camRect = cam.getBoundingClientRect();
-const overlayRect = overlay.getBoundingClientRect();
+    // ==== 1️⃣ 各種サイズを取得 ====
+    const videoW = cam.videoWidth;
+    const videoH = cam.videoHeight;
+    const camRect = cam.getBoundingClientRect();
+    const overlayRect = overlay.getBoundingClientRect();
 
-// videoの実サイズに対する画面サイズ比を取得
-const videoW = cam.videoWidth;
-const videoH = cam.videoHeight;
-const viewW = camRect.width;
-const viewH = camRect.height;
+    // canvasのサイズをカメラ映像に合わせる
+    canvas.width = videoW;
+    canvas.height = videoH;
+    const ctx = canvas.getContext("2d");
 
-// coverモードでの切り取り補正
-const videoRatio = videoW / videoH;
-const viewRatio = viewW / viewH;
+    // ==== 2️⃣ カメラ映像を cover 補正で描画 ====
+    const viewW = camRect.width;
+    const viewH = camRect.height;
+    const videoRatio = videoW / videoH;
+    const viewRatio = viewW / viewH;
 
-let offsetX = 0, offsetY = 0, renderW = videoW, renderH = videoH;
-if (videoRatio > viewRatio) {
-  // 横が余る → 左右をカット
-  renderW = videoH * viewRatio;
-  offsetX = (videoW - renderW) / 2;
-} else if (videoRatio < viewRatio) {
-  // 縦が余る → 上下をカット
-  renderH = videoW / viewRatio;
-  offsetY = (videoH - renderH) / 2;
-}
+    let renderW = videoW;
+    let renderH = videoH;
+    let offsetX = 0;
+    let offsetY = 0;
 
-// スクリーン→ビデオ座標変換スケール
-const scaleX = renderW / viewW;
-const scaleY = renderH / viewH;
+    if (videoRatio > viewRatio) {
+      // 横が余る → 左右をカット
+      renderW = videoH * viewRatio;
+      offsetX = (videoW - renderW) / 2;
+    } else if (videoRatio < viewRatio) {
+      // 縦が余る → 上下をカット
+      renderH = videoW / viewRatio;
+      offsetY = (videoH - renderH) / 2;
+    }
 
-// overlay位置をvideo座標に変換
-const drawX = (overlayRect.left - camRect.left + translateX) * scaleX + offsetX;
-const drawY = (overlayRect.top - camRect.top + translateY) * scaleY + offsetY;
-const drawWidth = overlayRect.width * scaleX * scale;
-const drawHeight = overlayRect.height * scaleY * scale;
+    ctx.drawImage(
+      cam,
+      offsetX, offsetY, renderW, renderH, // ソース
+      0, 0, canvas.width, canvas.height   // 描画先
+    );
 
-// 正しい位置に描画
-ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
-
-    // 🖼 overlayを重ねる
+    // ==== 3️⃣ overlay画像を正しい比率で重ねる ====
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = overlay.src;
     await img.decode();
 
-    
- 　　// overlayの位置・サイズをcanvasに変換（transform scaleを反映）
-　　const scaleX = canvas.width / camRect.width;
-　　const scaleY = canvas.height / camRect.height;
+    // スクリーン → video座標変換スケール
+    const scaleX = renderW / viewW;
+    const scaleY = renderH / viewH;
 
-　　// overlay の位置とサイズをキャンバス座標に変換
-　　const drawX = (overlayRect.left - camRect.left + translateX) * scaleX;
-　　const drawY = (overlayRect.top - camRect.top + translateY) * scaleY;
-　　const drawWidth = overlayRect.width * scaleX * scale;
-　　const drawHeight = overlayRect.height * scaleY * scale;
+    // overlay位置を video座標に変換（縦横比維持）
+    const drawX = (overlayRect.left - camRect.left + translateX) * scaleX + offsetX;
+    const drawY = (overlayRect.top - camRect.top + translateY) * scaleY + offsetY;
 
-　　// overlay画像を描画（縦横比を保持）
-　　ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+    // ✅ 縦横比を維持するため、overlay のアスペクト比を固定
+    const overlayAspect = overlayRect.width / overlayRect.height;
+    const drawWidth = overlayRect.width * scaleX * scale;
+    const drawHeight = drawWidth / overlayAspect;
 
+    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
 
-
-    // ✅ プレビュー設定（containで縦横比固定）
+    // ==== 4️⃣ プレビュー設定 ====
     preview.src = canvas.toDataURL("image/png");
     preview.style.display = "block";
     preview.style.objectFit = "contain";
@@ -282,6 +281,7 @@ ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
     captureBtn.style.display = "none";
     switchBtn.style.display = "none";
     postButtons.style.display = "flex";
+
   } catch (err) {
     console.error("撮影処理中にエラー:", err);
     alert("撮影に失敗しました。もう一度お試しください。");
@@ -315,6 +315,7 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
 
