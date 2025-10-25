@@ -244,24 +244,19 @@ captureBtn.addEventListener("click", async () => {
     await img.decode();
 
     
- 　 // overlayの位置・サイズをcanvasに変換（transform scaleを反映）
-    const scaleX = canvas.width / camRect.width;
-    const scaleY = canvas.height / camRect.height;
+ 　　// overlayの位置・サイズをcanvasに変換（transform scaleを反映）
+　　const scaleX = canvas.width / camRect.width;
+　　const scaleY = canvas.height / camRect.height;
 
-    // ✅ 縦横比を保つため、1つのスケール値に統一
-    const scaleFix = Math.min(scaleX, scaleY);
+　　// overlay の位置とサイズをキャンバス座標に変換
+　　const drawX = (overlayRect.left - camRect.left + translateX) * scaleX;
+　　const drawY = (overlayRect.top - camRect.top + translateY) * scaleY;
+　　const drawWidth = overlayRect.width * scaleX * scale;
+　　const drawHeight = overlayRect.height * scaleY * scale;
 
-    const drawX = (overlayRect.left - camRect.left) * scaleFix;
-    const drawY = (overlayRect.top - camRect.top) * scaleFix;
-    const drawWidth = overlayRect.width * scaleFix;
-    const drawHeight = overlayRect.height * scaleFix;
+　　// overlay画像を描画（縦横比を保持）
+　　ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
 
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.translate(translateX * scaleFix, translateY * scaleFix);
-    ctx.scale(scale, scale);
-    ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
-    ctx.restore();
 
 
     // ✅ プレビュー設定（containで縦横比固定）
@@ -309,5 +304,6 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
