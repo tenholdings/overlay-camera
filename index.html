@@ -20,15 +20,22 @@
     overflow: hidden;
   }
 
-  #cam, #overlay, #preview {
+  /* ✅ カメラは cover（自然に見える） */
+  #cam {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* ✅ オーバーレイは contain（切れない・ズレ防止） */
+  #overlay {
     position: absolute;
     top: 0; left: 0;
     width: 100%;
     height: 100%;
     object-fit: contain;
-  }
-
-  #overlay {
     z-index: 2;
     cursor: grab;
     touch-action: none;
@@ -36,9 +43,16 @@
     opacity: 0.95;
   }
 
+  /* ✅ 撮影後プレビューも contain（歪み防止） */
   #preview {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
     display: none;
     z-index: 3;
+    background: black;
   }
 
   #capture {
@@ -125,7 +139,7 @@ const switchBtn = document.getElementById("switchCam");
 
 let facing = "user";
 
-// カメラ起動
+// 🎥 カメラ起動
 async function startCam() {
   try {
     if (window.stream) window.stream.getTracks().forEach(t => t.stop());
@@ -142,12 +156,12 @@ switchBtn.addEventListener("click", () => {
   startCam();
 });
 
-// URLパラメータから画像
+// 🖼️ URLパラメータからオーバーレイ画像
 const params = new URLSearchParams(window.location.search);
 const imgURL = params.get("img");
 if (imgURL) overlay.src = imgURL;
 
-// overlay移動・拡大
+// ✋ オーバーレイ移動・拡大
 let isDragging=false, startX=0, startY=0;
 let translateX=0, translateY=0;
 let scale=1, startDist=0, startScale=1;
@@ -188,37 +202,52 @@ overlay.addEventListener("touchmove", e=>{
 });
 overlay.addEventListener("touchend", ()=>isDragging=false);
 
-// 撮影
+// 📸 撮影処理（containズレ完全補正）
 captureBtn.addEventListener("click", async ()=>{
   if(!cam.videoWidth){ alert("カメラの準備中です"); return; }
   try{
     const camRect = cam.getBoundingClientRect();
     const overlayRect = overlay.getBoundingClientRect();
 
+    // canvasの解像度をvideoサイズに合わせる
     canvas.width = cam.videoWidth;
     canvas.height = cam.videoHeight;
     const ctx = canvas.getContext("2d");
 
-    // video描画（フルサイズ）
-    ctx.drawImage(cam, 0, 0, cam.videoWidth, cam.videoHeight);
+    // ✅ video映像描画（cover相当領域を再現）
+    const videoRatio = cam.videoWidth / cam.videoHeight;
+    const screenRatio = camRect.width / camRect.height;
+    let sx = 0, sy = 0, sWidth = cam.videoWidth, sHeight = cam.videoHeight;
 
-    // overlay描画
+    if (videoRatio > screenRatio) {
+      const newWidth = cam.videoHeight * screenRatio;
+      sx = (cam.videoWidth - newWidth) / 2;
+      sWidth = newWidth;
+    } else if (videoRatio < screenRatio) {
+      const newHeight = cam.videoWidth / screenRatio;
+      sy = (cam.videoHeight - newHeight) / 2;
+      sHeight = newHeight;
+    }
+
+    ctx.drawImage(cam, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+
+    // ✅ overlay描画（位置ズレ補正＋scale反映）
     const img = new Image();
     img.crossOrigin="anonymous";
     img.src=overlay.src;
     await img.decode();
 
-    // overlayの位置・サイズをcanvasに変換（transform scaleを反映）
     const scaleX = canvas.width / camRect.width;
     const scaleY = canvas.height / camRect.height;
-    const ox = (overlayRect.left - camRect.left) * scaleX + translateX * scaleX;
-    const oy = (overlayRect.top - camRect.top) * scaleY + translateY * scaleY;
+
+    const ox = (overlayRect.left - camRect.left + translateX) * scaleX;
+    const oy = (overlayRect.top - camRect.top + translateY) * scaleY;
     const ow = overlayRect.width * scaleX * scale;
     const oh = overlayRect.height * scaleY * scale;
 
     ctx.drawImage(img, ox, oy, ow, oh);
 
-    // プレビュー表示
+    // ✅ プレビュー表示
     preview.src = canvas.toDataURL("image/png");
     preview.style.display="block";
     cam.style.display="none";
