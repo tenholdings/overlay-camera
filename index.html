@@ -210,45 +210,55 @@
     overlay.addEventListener("touchend", ()=> isDragging=false);
 　　// ======== 撮影（contain一致・伸び完全防止） ========
 　　captureBtn.addEventListener("click", async () => {
-  if (!cam.videoWidth) {
-    alert("カメラの準備中です");
-    return;
-  }
+  if (!cam.videoWidth) { alert("カメラの準備中です"); return; }
 
   try {
     const camRect = cam.getBoundingClientRect();
     const overlayRect = overlay.getBoundingClientRect();
 
-    // canvasを videoの実ピクセルに合わせる
     canvas.width = cam.videoWidth;
     canvas.height = cam.videoHeight;
     const ctx = canvas.getContext("2d");
 
-    // === カメラ映像をdraw ===
-    ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
+    // --- video の見えている部分を計算 ---
+    const videoRatio = cam.videoWidth / cam.videoHeight;
+    const screenRatio = camRect.width / camRect.height;
+    let drawVideoX = 0, drawVideoY = 0, drawVideoWidth = canvas.width, drawVideoHeight = canvas.height;
 
-    // === overlay画像 ===
+    if (videoRatio > screenRatio) {
+      // 横長 → 上下に余白
+      drawVideoHeight = canvas.width / videoRatio;
+      drawVideoY = (canvas.height - drawVideoHeight) / 2;
+    } else if (videoRatio < screenRatio) {
+      // 縦長 → 左右に余白
+      drawVideoWidth = canvas.height * videoRatio;
+      drawVideoX = (canvas.width - drawVideoWidth) / 2;
+    }
+
+    ctx.drawImage(cam, 0, 0, cam.videoWidth, cam.videoHeight, drawVideoX, drawVideoY, drawVideoWidth, drawVideoHeight);
+
+    // --- overlay画像 ---
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = overlay.src;
     await img.decode();
 
-    // DOM上の位置とサイズを video実ピクセルスケールに換算
-    const scaleX = cam.videoWidth / camRect.width;
-    const scaleY = cam.videoHeight / camRect.height;
+    // overlayの位置を video 内の座標に変換
+    const videoScaleX = drawVideoWidth / camRect.width;
+    const videoScaleY = drawVideoHeight / camRect.height;
 
-    const drawX = (overlayRect.left - camRect.left) * scaleX;
-    const drawY = (overlayRect.top - camRect.top) * scaleY;
-    const drawWidth = overlayRect.width * scaleX;
-    const drawHeight = overlayRect.height * scaleY;
+    const offsetX = (overlayRect.left - camRect.left) * videoScaleX + drawVideoX;
+    const offsetY = (overlayRect.top - camRect.top) * videoScaleY + drawVideoY;
+    const overlayWidth = overlayRect.width * videoScaleX;
+    const overlayHeight = overlayRect.height * videoScaleY;
 
     ctx.save();
-    ctx.translate(drawX + drawWidth / 2, drawY + drawHeight / 2);
+    ctx.translate(offsetX + overlayWidth/2, offsetY + overlayHeight/2);
     ctx.scale(scale, scale);
-    ctx.drawImage(img, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+    ctx.drawImage(img, -overlayWidth/2, -overlayHeight/2, overlayWidth, overlayHeight);
     ctx.restore();
 
-    // === プレビュー ===
+    // プレビュー表示
     preview.src = canvas.toDataURL("image/png");
     preview.style.display = "block";
     cam.style.display = "none";
@@ -290,6 +300,7 @@
   </script>
 </body>
 </html>
+
 
 
 
