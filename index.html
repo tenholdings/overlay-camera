@@ -214,13 +214,16 @@ captureBtn.addEventListener("click", async ()=>{
     else if(cam.videoHeight > cam.videoWidth) sy = (cam.videoHeight - cam.videoWidth)/2;
     ctx.drawImage(cam, sx, sy, size, size, 0,0,size,size);
 
-   // overlay描画
+  　// 🖼 overlay画像を読み込む
 const img = new Image();
-img.crossOrigin="anonymous";
+img.crossOrigin = "anonymous";
 img.src = overlay.src;
-await img.decode();
+await img.decode(); // ←これ必須
 
-// CSSでの幅・高さを取得（元サイズ）
+// overlayの画面上の幅と高さ
+const overlayRect = overlay.getBoundingClientRect();
+
+// 元サイズを transform scale で補正
 const baseWidth = overlayRect.width / scale;
 const baseHeight = overlayRect.height / scale;
 
@@ -273,4 +276,5 @@ startCam();
 </script>
 </body>
 </html>
+
 
