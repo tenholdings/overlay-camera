@@ -12,8 +12,8 @@ html, body {
 #container {
   position: relative;
   width: 100vw;
-  height: 100vw; /* 正方形に固定 */
-  max-height: 100vh; /* 縦に画面いっぱいにはみ出さない */
+  height: 100vw; /* 正方形 */
+  max-height: 100vh;
   margin: 0 auto;
   overflow: hidden;
   background: black;
@@ -26,9 +26,6 @@ html, body {
 }
 #overlay {
   position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  object-fit: contain;
   z-index: 2;
   cursor: grab;
   touch-action: none;
@@ -46,7 +43,7 @@ html, body {
 }
 #capture {
   position: absolute;
-  bottom: 80px; /* iPhone下帯を避ける */
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 4;
@@ -145,6 +142,21 @@ const params = new URLSearchParams(window.location.search);
 const imgURL = params.get("img");
 if (imgURL) overlay.src = imgURL;
 
+// 初期サイズと位置を設定（正方形・中央）
+function resetOverlay(){
+  const containerRect = document.getElementById("container").getBoundingClientRect();
+  const size = containerRect.width * 0.5; // 初期サイズ50%
+  overlay.style.width = `${size}px`;
+  overlay.style.height = `${size}px`;
+  overlay.style.left = `${(containerRect.width - size)/2}px`;
+  overlay.style.top = `${(containerRect.height - size)/2}px`;
+  translateX = 0;
+  translateY = 0;
+  scale = 1;
+  overlay.style.transform = `translate(0px,0px) scale(1)`;
+}
+overlay.onload = resetOverlay;
+
 // ✋ オーバーレイ移動・拡大
 let isDragging=false, startX=0, startY=0;
 let startScale=1, startDist=0;
@@ -190,7 +202,7 @@ captureBtn.addEventListener("click", async ()=>{
     const camRect = cam.getBoundingClientRect();
     const overlayRect = overlay.getBoundingClientRect();
 
-    // 正方形 canvas サイズ
+    // 正方形 canvas
     const size = Math.min(cam.videoWidth, cam.videoHeight);
     canvas.width = size;
     canvas.height = size;
@@ -198,11 +210,8 @@ captureBtn.addEventListener("click", async ()=>{
 
     // カメラ映像を中央トリミングして正方形描画
     let sx=0, sy=0;
-    if(cam.videoWidth > cam.videoHeight){
-      sx = (cam.videoWidth - cam.videoHeight)/2;
-    } else if(cam.videoHeight > cam.videoWidth){
-      sy = (cam.videoHeight - cam.videoWidth)/2;
-    }
+    if(cam.videoWidth > cam.videoHeight) sx = (cam.videoWidth - cam.videoHeight)/2;
+    else if(cam.videoHeight > cam.videoWidth) sy = (cam.videoHeight - cam.videoWidth)/2;
     ctx.drawImage(cam, sx, sy, size, size, 0,0,size,size);
 
     // overlay描画
@@ -222,7 +231,7 @@ captureBtn.addEventListener("click", async ()=>{
 
     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
 
-    // プレビュー表示
+    // プレビュー
     preview.src = canvas.toDataURL("image/png");
     preview.style.display="block";
     preview.style.objectFit="contain";
@@ -235,10 +244,7 @@ captureBtn.addEventListener("click", async ()=>{
     switchBtn.style.display="none";
     postButtons.style.display="flex";
 
-  } catch(err){
-    console.error(err);
-    alert("撮影に失敗しました");
-  }
+  } catch(err){ console.error(err); alert("撮影に失敗しました"); }
 });
 
 // 撮り直し
@@ -249,6 +255,7 @@ retakeBtn.addEventListener("click", ()=>{
   captureBtn.style.display="inline";
   switchBtn.style.display="inline";
   postButtons.style.display="none";
+  resetOverlay();
 });
 // 保存
 saveBtn.addEventListener("click", ()=>{
