@@ -214,22 +214,24 @@ captureBtn.addEventListener("click", async ()=>{
     else if(cam.videoHeight > cam.videoWidth) sy = (cam.videoHeight - cam.videoWidth)/2;
     ctx.drawImage(cam, sx, sy, size, size, 0,0,size,size);
 
-    // overlay描画
-    const img = new Image();
-    img.crossOrigin="anonymous";
-    img.src=overlay.src;
-    await img.decode();
+   // overlay描画
+const img = new Image();
+img.crossOrigin="anonymous";
+img.src = overlay.src;
+await img.decode();
 
-    // 画面座標 → canvas座標
-    const scaleX = size / camRect.width;
-    const scaleY = size / camRect.height;
+// CSSでの幅・高さを取得（元サイズ）
+const baseWidth = overlayRect.width / scale;
+const baseHeight = overlayRect.height / scale;
 
-    const drawX = (overlayRect.left - camRect.left + translateX) * scaleX;
-    const drawY = (overlayRect.top - camRect.top + translateY) * scaleY;
-    const drawWidth = overlayRect.width * scaleX * scale;
-    const drawHeight = overlayRect.height * scaleY * scale;
+// canvas座標に変換
+const drawX = (overlayRect.left - camRect.left + translateX) * scaleX;
+const drawY = (overlayRect.top - camRect.top + translateY) * scaleY;
+const drawWidth = baseWidth * scale * scaleX;
+const drawHeight = baseHeight * scale * scaleY;
 
-    ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+
 
     // プレビュー
     preview.src = canvas.toDataURL("image/png");
@@ -271,3 +273,4 @@ startCam();
 </script>
 </body>
 </html>
+
