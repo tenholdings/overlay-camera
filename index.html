@@ -3,130 +3,130 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>オーバーレイ撮影（ミラー＆位置ズレ修正版）</title>
 <style>
   body {
+    margin: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     background: #000;
-    margin: 0;
-    height: 100vh;
-    justify-content: center;
   }
 
-  #camera-container {
+  .camera-container {
     position: relative;
-    width: 100vmin;
-    height: 100vmin;
+    width: 90vmin;
+    height: 90vmin;
     overflow: hidden;
-    background: black;
   }
 
-  #video {
+  video {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: auto;
+    top: 0;
+    left: 0;
+    width: 100%;
     height: 100%;
-    transform: translate(-50%, -50%) scaleX(-1); /* ✅ 撮影時も鏡像に */
     object-fit: cover;
-    aspect-ratio: 1 / 1;
+    transform: scaleX(-1); /* 🎯 ミラー反転 */
   }
 
   #overlay {
     position: absolute;
-    border: 3px solid #00ffcc;
-    border-radius: 10px;
-    width: 60%;
-    height: 60%;
-    top: 20%;
-    left: 20%;
-    pointer-events: none;
+    width: 50%;
+    top: 25%;
+    left: 25%;
+    cursor: move;
+    object-fit: contain;
+    transform-origin: center center;
+    z-index: 2;
+    pointer-events: auto;
   }
 
-  #canvas {
+  canvas {
     display: none;
   }
 
-  button {
-    margin-top: 20px;
+  #capture {
+    margin-top: 1rem;
     padding: 10px 20px;
-    font-size: 18px;
+  }
+
+  #result {
+    margin-top: 1rem;
+    width: 90vmin;
   }
 </style>
 </head>
 <body>
-  <div id="camera-container">
-    <video id="video" autoplay playsinline></video>
-    <div id="overlay"></div>
-  </div>
-  <button id="capture">撮影</button>
-  <canvas id="canvas"></canvas>
 
-  <script>
-    const video = document.getElementById('video');
-    const overlay = document.getElementById('overlay');
-    const canvas = document.getElementById('canvas');
-    const captureButton = document.getElementById('capture');
-    const container = document.getElementById('camera-container');
+<div class="camera-container">
+  <video id="video" autoplay playsinline></video>
+  <img id="overlay" src="overlay.png" alt="overlay">
+</div>
 
-    // === カメラ起動 ===
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "user" } // インカメラ
-    })
-    .then(stream => {
-      video.srcObject = stream;
-    })
-    .catch(err => alert("カメラが起動できません: " + err));
+<button id="capture">📸 撮影</button>
+<canvas id="canvas"></canvas>
+<img id="result" alt="result">
 
-    // === 撮影 ===
-    captureButton.addEventListener('click', () => {
-      const containerRect = container.getBoundingClientRect();
-      const overlayRect = overlay.getBoundingClientRect();
+<script>
+const video = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const canvas = document.getElementById('canvas');
+const result = document.getElementById('result');
+const captureButton = document.getElementById('capture');
 
-      // オーバーレイの相対座標（CSS比率）
-      const relX = (overlayRect.left - containerRect.left) / containerRect.width;
-      const relY = (overlayRect.top - containerRect.top) / containerRect.height;
-      const relW = overlayRect.width / containerRect.width;
-      const relH = overlayRect.height / containerRect.height;
+// 🎥 カメラ起動
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => video.srcObject = stream)
+  .catch(err => alert('カメラにアクセスできません: ' + err));
 
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
+// 🖱️ オーバーレイ移動
+let offsetX, offsetY, isDragging = false;
 
-      // videoの中央トリミング補正
-      const videoAspect = vw / vh;
-      const containerAspect = containerRect.width / containerRect.height;
-      let cropX = 0, cropY = 0, cropW = vw, cropH = vh;
-      if (videoAspect > containerAspect) {
-        cropW = vh * containerAspect;
-        cropX = (vw - cropW) / 2;
-      } else {
-        cropH = vw / containerAspect;
-        cropY = (vh - cropH) / 2;
-      }
+overlay.addEventListener('mousedown', e => {
+  isDragging = true;
+  offsetX = e.clientX - overlay.offsetLeft;
+  offsetY = e.clientY - overlay.offsetTop;
+});
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+  if (isDragging) {
+    overlay.style.left = `${e.clientX - offsetX}px`;
+    overlay.style.top = `${e.clientY - offsetY}px`;
+  }
+});
 
-      // オーバーレイ位置をvideoの実ピクセルに変換（左右反転対応）
-      const sx = cropX + cropW * (1 - relX - relW); // ✅ ミラー反転なので右左入れ替え
-      const sy = cropY + cropH * relY;
-      const sw = cropW * relW;
-      const sh = cropH * relH;
+// 🎯 撮影処理
+captureButton.addEventListener('click', () => {
+  const size = Math.min(video.videoWidth, video.videoHeight);
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
 
-      canvas.width = overlayRect.width;
-      canvas.height = overlayRect.height;
+  // 📸 カメラをミラー反転で描画
+  ctx.save();
+  ctx.translate(size, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, size, size);
+  ctx.restore();
 
-      const ctx = canvas.getContext('2d');
+  // 🧩 オーバーレイ座標を正確に反映
+  const containerRect = video.getBoundingClientRect();
+  const overlayRect = overlay.getBoundingClientRect();
 
-      // ✅ 反転済みvideoをそのまま反映（canvas側では反転しない）
-      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+  const relX = (overlayRect.left - containerRect.left) / containerRect.width * size;
+  const relY = (overlayRect.top - containerRect.top) / containerRect.height * size;
+  const relW = overlayRect.width / containerRect.width * size;
+  const relH = overlayRect.height / containerRect.height * size;
 
-      // === 撮影結果を確認 ===
-      const img = new Image();
-      img.src = canvas.toDataURL("image/png");
-      img.style.width = "80vmin";
-      img.style.height = "80vmin";
-      img.style.marginTop = "20px";
-      document.body.appendChild(img);
-    });
-  </script>
+  const overlayImg = new Image();
+  overlayImg.src = overlay.src;
+  overlayImg.onload = () => {
+    ctx.drawImage(overlayImg, relX, relY, relW, relH);
+    result.src = canvas.toDataURL('image/png');
+  };
+});
+</script>
+
 </body>
 </html>
