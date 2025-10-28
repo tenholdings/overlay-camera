@@ -12,49 +12,39 @@
     margin: 0;
     height: 100vh;
     justify-content: center;
+    overflow: hidden;
   }
 
   #camera-container {
     position: relative;
     width: 100vmin;
-    height: 100vmin; /* ✅ 正方形に固定 */
+    height: 100vmin;
     overflow: hidden;
     background: black;
+    touch-action: none;
   }
 
   #video {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: auto;
     height: 100%;
-    transform: translate(-50%, -50%) scaleX(-1); /* ✅ 撮影時もミラー反転 */
+    transform: translate(-50%, -50%) scaleX(-1); /* ミラー表示 */
     object-fit: cover;
-    aspect-ratio: 1 / 1;
   }
 
   #overlay {
     position: absolute;
-    border: 4px solid #00ffcc;
+    border: 3px solid #00ffcc;
     border-radius: 10px;
     width: 60%;
     height: 60%;
     top: 20%;
     left: 20%;
-    pointer-events: none;
-  }
-
-  #canvas {
-    display: none;
-  }
-
-  #preview {
-    display: none;
-    width: 80vmin;
-    height: 80vmin;
-    margin-top: 20px;
-    object-fit: contain;
-    border: 2px solid #333;
+    cursor: move;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
   }
 
   button {
@@ -62,6 +52,8 @@
     padding: 10px 20px;
     font-size: 18px;
   }
+
+  #canvas { display: none; }
 </style>
 </head>
 <body>
@@ -69,79 +61,116 @@
     <video id="video" autoplay playsinline></video>
     <div id="overlay"></div>
   </div>
-
   <button id="capture">撮影</button>
   <canvas id="canvas"></canvas>
-  <img id="preview" alt="撮影プレビュー">
 
-  <script>
-    const video = document.getElementById('video');
-    const overlay = document.getElementById('overlay');
-    const canvas = document.getElementById('canvas');
-    const captureButton = document.getElementById('capture');
-    const container = document.getElementById('camera-container');
-    const preview = document.getElementById('preview');
+<script>
+const video = document.getElementById('video');
+const overlay = document.getElementById('overlay');
+const canvas = document.getElementById('canvas');
+const captureButton = document.getElementById('capture');
+const container = document.getElementById('camera-container');
 
-    // ✅ カメラ起動（インカメラ・正方形プレビュー）
-    navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: "user",
-        width: { ideal: 1280 },
-        height: { ideal: 1280 } // 正方形
-      }
-    })
-    .then(stream => video.srcObject = stream)
-    .catch(err => alert("カメラを起動できません: " + err));
+// ✅ Thunkableから受け取る画像URL（例：固定）
+overlay.style.backgroundImage = 'url("https://via.placeholder.com/300x300.png?text=Overlay")';
 
-    captureButton.addEventListener('click', () => {
-      const videoRect = video.getBoundingClientRect();
-      const containerRect = container.getBoundingClientRect();
-      const overlayRect = overlay.getBoundingClientRect();
+// 📸 カメラ起動（インカメラ・ミラー表示）
+navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+.then(stream => {
+  video.srcObject = stream;
+})
+.catch(err => alert("カメラが起動できません: " + err));
 
-      // オーバーレイの相対位置（％）
-      const relX = (overlayRect.left - containerRect.left) / containerRect.width;
-      const relY = (overlayRect.top - containerRect.top) / containerRect.height;
-      const relW = overlayRect.width / containerRect.width;
-      const relH = overlayRect.height / containerRect.height;
+// 🟦 オーバーレイをドラッグ移動
+let isDragging = false, startX, startY, startLeft, startTop;
+overlay.addEventListener("pointerdown", e => {
+  isDragging = true;
+  startX = e.clientX;
+  startY = e.clientY;
+  const rect = overlay.getBoundingClientRect();
+  startLeft = rect.left;
+  startTop = rect.top;
+  overlay.setPointerCapture(e.pointerId);
+});
 
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
+overlay.addEventListener("pointermove", e => {
+  if (!isDragging) return;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  const containerRect = container.getBoundingClientRect();
+  const newLeft = Math.min(Math.max(0, startLeft + dx - containerRect.left), containerRect.width - overlay.offsetWidth);
+  const newTop = Math.min(Math.max(0, startTop + dy - containerRect.top), containerRect.height - overlay.offsetHeight);
+  overlay.style.left = `${newLeft}px`;
+  overlay.style.top = `${newTop}px`;
+});
 
-      // ✅ videoとcontainerの比率を一致（coverと同様のトリミング補正）
-      const videoAspect = vw / vh;
-      const containerAspect = containerRect.width / containerRect.height;
+overlay.addEventListener("pointerup", () => {
+  isDragging = false;
+});
 
-      let cropX = 0, cropY = 0, cropW = vw, cropH = vh;
-      if (videoAspect > containerAspect) {
-        cropW = vh * containerAspect;
-        cropX = (vw - cropW) / 2;
-      } else {
-        cropH = vw / containerAspect;
-        cropY = (vh - cropH) / 2;
-      }
+// 🟣 撮影処理
+captureButton.addEventListener('click', () => {
+  const containerRect = container.getBoundingClientRect();
+  const overlayRect = overlay.getBoundingClientRect();
 
-      // オーバーレイ相対位置を実ピクセルに変換
-      const sx = cropX + cropW * relX;
-      const sy = cropY + cropH * relY;
-      const sw = cropW * relW;
-      const sh = cropH * relH;
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
 
-      // ✅ 撮影領域をオーバーレイサイズと一致させる
-      canvas.width = overlayRect.width;
-      canvas.height = overlayRect.height;
+  // 中央トリミング（object-fit: cover 相当）
+  const videoAspect = vw / vh;
+  const containerAspect = containerRect.width / containerRect.height;
+  let cropX = 0, cropY = 0, cropW = vw, cropH = vh;
+  if (videoAspect > containerAspect) {
+    cropW = vh * containerAspect;
+    cropX = (vw - cropW) / 2;
+  } else {
+    cropH = vw / containerAspect;
+    cropY = (vh - cropH) / 2;
+  }
 
-      const ctx = canvas.getContext('2d');
+  // オーバーレイの相対位置を算出
+  const relX = (overlayRect.left - containerRect.left) / containerRect.width;
+  const relY = (overlayRect.top - containerRect.top) / containerRect.height;
+  const relW = overlayRect.width / containerRect.width;
+  const relH = overlayRect.height / containerRect.height;
 
-      // ✅ 左右反転対応（保存後も同じ）
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, sx, sy, sw, sh, -canvas.width, 0, canvas.width, canvas.height);
-      ctx.restore();
+  const sx = cropX + cropW * relX;
+  const sy = cropY + cropH * relY;
+  const sw = cropW * relW;
+  const sh = cropH * relH;
 
-      // ✅ 撮影結果をプレビュー（1枚だけ更新）
-      preview.src = canvas.toDataURL("image/png");
-      preview.style.display = "block";
-    });
-  </script>
+  // 描画
+  canvas.width = overlayRect.width;
+  canvas.height = overlayRect.height;
+  const ctx = canvas.getContext('2d');
+
+  // 🔁 ミラー反転して撮影
+  ctx.save();
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, sx, sy, sw, sh, -canvas.width, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  // オーバーレイ画像を合成
+  const overlayImg = new Image();
+  overlayImg.crossOrigin = "anonymous";
+  overlayImg.src = overlay.style.backgroundImage.replace(/^url\(["']?/, '').replace(/["']?\)$/, '');
+
+  overlayImg.onload = () => {
+    ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+
+    // 結果画像を表示（or Thunkableに返す）
+    const imgData = canvas.toDataURL("image/png");
+    const result = document.querySelector("#result-img") || (() => {
+      const i = document.createElement("img");
+      i.id = "result-img";
+      i.style.width = "80vmin";
+      i.style.height = "80vmin";
+      document.body.appendChild(i);
+      return i;
+    })();
+    result.src = imgData;
+  };
+});
+</script>
 </body>
 </html>
