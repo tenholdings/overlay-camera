@@ -193,21 +193,24 @@ captureBtn.addEventListener("click", async () => {
   try {
     const ctx = canvas.getContext("2d");
 
-    // 正方形サイズ
     const squareSize = Math.min(cam.videoWidth, cam.videoHeight);
     canvas.width = squareSize;
     canvas.height = squareSize;
-
-    // ミラー反転
-    ctx.translate(squareSize, 0);
-    ctx.scale(-1, 1);
-
-    // video を中央クロップして描画
     const sx = (cam.videoWidth - squareSize) / 2;
     const sy = (cam.videoHeight - squareSize) / 2;
-    ctx.drawImage(cam, sx, sy, squareSize, squareSize, 0, 0, squareSize, squareSize);
 
-    // overlay も正確に重ねる
+    ctx.save();
+    if (facing === "user") {
+      // インカメラだけ反転
+      ctx.translate(squareSize, 0);
+      ctx.scale(-1, 1);
+    }
+
+    // video 描画
+    ctx.drawImage(cam, sx, sy, squareSize, squareSize, 0, 0, squareSize, squareSize);
+    ctx.restore(); // overlay 描画前に restore して transform をリセット
+
+    // overlay 描画（反転なし）
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.src = overlay.src;
@@ -232,11 +235,13 @@ captureBtn.addEventListener("click", async () => {
     captureBtn.style.display = "none";
     switchBtn.style.display = "none";
     postButtons.style.display = "flex";
+
   } catch (err) {
     console.error(err);
     alert("撮影に失敗しました");
   }
 });
+
 
 // 撮り直し
 retakeBtn.addEventListener("click", ()=>{
@@ -265,6 +270,7 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
 
