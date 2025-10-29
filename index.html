@@ -208,6 +208,11 @@ captureBtn.addEventListener("click", async () => {
 
     ctx.save();
 
+    if (facing === "user") {
+  // インカメラのビデオだけ反転
+  ctx.translate(squareSize, 0);
+  ctx.scale(-1, 1);
+}
      ctx.drawImage(cam, sx, sy, squareSize, squareSize, 0, 0, squareSize, squareSize);
      ctx.restore();
 
@@ -269,5 +274,6 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
