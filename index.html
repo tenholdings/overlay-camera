@@ -127,12 +127,6 @@ async function startCam() {
     const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } });
     cam.srcObject = stream;
     window.stream = stream;
-      // 🪞 ミラー表示制御
-    if (facing === "user") {
-      cam.style.transform = "scaleX(-1)"; // インカメラ：鏡のように見せる
-    } else {
-      cam.style.transform = "scaleX(1)"; // アウトカメラ：通常表示
-    }
   } catch (err) {
     alert("カメラにアクセスできません: " + err);
   }
@@ -203,18 +197,15 @@ captureBtn.addEventListener("click", async () => {
     const squareSize = Math.min(cam.videoWidth, cam.videoHeight);
     canvas.width = squareSize;
     canvas.height = squareSize;
+
+    // ミラー反転
+    ctx.translate(squareSize, 0);
+    ctx.scale(-1, 1);
+
+    // video を中央クロップして描画
     const sx = (cam.videoWidth - squareSize) / 2;
     const sy = (cam.videoHeight - squareSize) / 2;
-
-    ctx.save();
-
-    if (facing === "user") {
-  // インカメラのビデオだけ反転
-  ctx.translate(squareSize, 0);
-  ctx.scale(-1, 1);
-}
-     ctx.drawImage(cam, sx, sy, squareSize, squareSize, 0, 0, squareSize, squareSize);
-     ctx.restore();
+    ctx.drawImage(cam, sx, sy, squareSize, squareSize, 0, 0, squareSize, squareSize);
 
     // overlay も正確に重ねる
     const img = new Image();
@@ -274,6 +265,7 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
 
