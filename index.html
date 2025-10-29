@@ -197,15 +197,20 @@ captureBtn.addEventListener("click", async () => {
     const squareSize = Math.min(cam.videoWidth, cam.videoHeight);
     canvas.width = squareSize;
     canvas.height = squareSize;
-
-    // ミラー反転
-    ctx.translate(squareSize, 0);
-    ctx.scale(-1, 1);
-
-    // video を中央クロップして描画
     const sx = (cam.videoWidth - squareSize) / 2;
     const sy = (cam.videoHeight - squareSize) / 2;
-    ctx.drawImage(cam, sx, sy, squareSize, squareSize, 0, 0, squareSize, squareSize);
+
+    ctx.save();
+    
+    // 📸 ★インカメラのときだけ左右反転して描画
+  if (facing === "user") {
+    ctx.scale(-1, 1);
+    ctx.drawImage(cam, sx, sy, squareSize, squareSize, -canvas.width, 0, canvas.width, canvas.height);
+  } else {
+    ctx.drawImage(cam, sx, sy, squareSize, squareSize, 0, 0, canvas.width, canvas.height);
+  }
+
+  ctx.restore();
 
     // overlay も正確に重ねる
     const img = new Image();
@@ -265,3 +270,4 @@ startCam();
 </script>
 </body>
 </html>
+
