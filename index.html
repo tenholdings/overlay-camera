@@ -23,7 +23,7 @@ html, body {
   cursor: grab;
   touch-action: none;
   transform-origin: center center;
-  opacity: 1; /* ← 透けずにくっきり */
+  opacity: 1; /* くっきり */
 }
 #preview {
   display: none;
@@ -31,27 +31,48 @@ html, body {
   background: black;
   object-fit: contain;
 }
+
+/* 🩶 ボタン共通デザイン */
 button {
   position: fixed;
-  z-index: 10; /* ← ボタンを一番前に */
-  padding: 10px 20px;
+  z-index: 20; /* ← オーバーレイより上 */
+  padding: 12px 24px;
   font-size: 16px;
   border: none;
-  border-radius: 8px;
-  background: #ff6b9a;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.25);
   color: white;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255,255,255,0.4);
+  transition: background 0.2s;
 }
-#capture { bottom: 80px; left: 50%; transform: translateX(-50%); }
-#switchCam { top: 12px; right: 12px; }
-#postButtons {
-  position: fixed;
-  z-index: 10;
+button:hover {
+  background: rgba(255,255,255,0.4);
+}
+#capture {
   bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
-  gap: 10px;
+  width: 70px; height: 70px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.6);
+  border: 3px solid white;
+}
+#capture:hover {
+  background: rgba(255,255,255,0.8);
+}
+#switchCam {
+  top: 12px;
+  right: 12px;
+}
+#postButtons {
+  position: fixed;
+  z-index: 20;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
   display: none;
+  gap: 10px;
 }
 #canvas { display: none; }
 </style>
@@ -64,10 +85,10 @@ button {
 </div>
 
 <button id="switchCam">🔄</button>
-<button id="capture">📸</button>
+<button id="capture"></button>
 
 <div id="postButtons">
-  <button id="retake">🔄 撮り直す</button>
+  <button id="retake">🔄 撮り直し</button>
   <button id="save">💾 保存</button>
   <button id="done">✅ 完了</button>
 </div>
@@ -87,6 +108,7 @@ const doneBtn = document.getElementById("done");
 const switchBtn = document.getElementById("switchCam");
 
 let facing = "user"; // user=インカメラ, environment=アウトカメラ
+let translateX=0, translateY=0, scale=1;
 
 async function startCam() {
   if (window.stream) window.stream.getTracks().forEach(t=>t.stop());
@@ -111,26 +133,27 @@ const imgURL = params.get("img");
 if (imgURL) overlay.src = imgURL;
 
 // オーバーレイ操作（ドラッグ・ピンチズーム）
-let isDragging=false,startX=0,startY=0,translateX=0,translateY=0,scale=1,startDist=0,startScale=1;
-overlay.addEventListener("mousedown", e=>{ isDragging=true; startX=e.clientX; startY=e.clientY; });
+let isDragging=false,startX=0,startY=0,startDist=0,startScale=1;
+overlay.addEventListener("mousedown", e=>{
+  isDragging=true; startX=e.clientX; startY=e.clientY;
+});
 window.addEventListener("mousemove", e=>{
   if(isDragging){
-    translateX += e.clientX-startX; translateY += e.clientY-startY;
-    overlay.style.transform = `translate(${translateX}px,${translateY}px) scale(${scale})`;
+    translateX += e.clientX-startX;
+    translateY += e.clientY-startY;
+    overlay.style.transform=`translate(${translateX}px,${translateY}px) scale(${scale})`;
     startX=e.clientX; startY=e.clientY;
   }
 });
 window.addEventListener("mouseup", ()=>isDragging=false);
+
 overlay.addEventListener("touchstart", e=>{
   if(e.touches.length===1){
     isDragging=true; startX=e.touches[0].clientX; startY=e.touches[0].clientY;
   } else if(e.touches.length===2){
     isDragging=false;
-    startDist = Math.hypot(
-      e.touches[1].clientX - e.touches[0].clientX,
-      e.touches[1].clientY - e.touches[0].clientY
-    );
-    startScale = scale;
+    startDist=Math.hypot(e.touches[1].clientX-e.touches[0].clientX, e.touches[1].clientY-e.touches[0].clientY);
+    startScale=scale;
   }
 });
 overlay.addEventListener("touchmove", e=>{
@@ -138,47 +161,42 @@ overlay.addEventListener("touchmove", e=>{
   if(e.touches.length===1 && isDragging){
     translateX += e.touches[0].clientX-startX;
     translateY += e.touches[0].clientY-startY;
-    overlay.style.transform = `translate(${translateX}px,${translateY}px) scale(${scale})`;
+    overlay.style.transform=`translate(${translateX}px,${translateY}px) scale(${scale})`;
     startX=e.touches[0].clientX; startY=e.touches[0].clientY;
   } else if(e.touches.length===2){
-    const newDist = Math.hypot(
-      e.touches[1].clientX - e.touches[0].clientX,
-      e.touches[1].clientY - e.touches[0].clientY
-    );
-    scale = startScale * (newDist / startDist);
-    overlay.style.transform = `translate(${translateX}px,${translateY}px) scale(${scale})`;
+    const newDist=Math.hypot(e.touches[1].clientX-e.touches[0].clientX, e.touches[1].clientY-e.touches[0].clientY);
+    scale=startScale*(newDist/startDist);
+    overlay.style.transform=`translate(${translateX}px,${translateY}px) scale(${scale})`;
   }
 });
 overlay.addEventListener("touchend", ()=>isDragging=false);
 
 // 撮影処理
 captureBtn.addEventListener("click", async ()=>{
-  if(!cam.videoWidth) return alert("カメラ準備中");
+  if(!cam.videoWidth) return alert("カメラ準備中…");
 
   const ctx = canvas.getContext("2d");
-  const squareSize = Math.min(cam.videoWidth, cam.videoHeight);
-  canvas.width = squareSize;
-  canvas.height = squareSize;
+  const size = Math.min(cam.videoWidth, cam.videoHeight);
+  canvas.width = size; canvas.height = size;
 
   ctx.save();
-  if (facing === "user") { // インカメラの場合のみ反転
-    ctx.translate(squareSize, 0);
+  if (facing === "user") {
+    ctx.translate(size, 0);
     ctx.scale(-1, 1);
   }
-
-  const sx = (cam.videoWidth - squareSize) / 2;
-  const sy = (cam.videoHeight - squareSize) / 2;
-  ctx.drawImage(cam, sx, sy, squareSize, squareSize, 0, 0, squareSize, squareSize);
+  const sx = (cam.videoWidth - size) / 2;
+  const sy = (cam.videoHeight - size) / 2;
+  ctx.drawImage(cam, sx, sy, size, size, 0, 0, size, size);
   ctx.restore();
 
-  // overlayも合成（反転せずにくっきり）
+  // overlay 合成
   const img = new Image();
   img.src = overlay.src;
   await img.decode();
   ctx.save();
-  ctx.translate(translateX + squareSize / 2, translateY + squareSize / 2);
+  ctx.translate(translateX + size/2, translateY + size/2);
   ctx.scale(scale, scale);
-  ctx.drawImage(img, -squareSize / 2, -squareSize / 2, squareSize, squareSize);
+  ctx.drawImage(img, -size/2, -size/2, size, size);
   ctx.restore();
 
   preview.src = canvas.toDataURL("image/png");
@@ -187,7 +205,7 @@ captureBtn.addEventListener("click", async ()=>{
   overlay.style.display = "none";
   captureBtn.style.display = "none";
   switchBtn.style.display = "none";
-  postButtons.style.display = "flex"; // ✅ ここで表示
+  postButtons.style.display = "flex";
 });
 
 // 撮り直し
@@ -195,8 +213,8 @@ retakeBtn.addEventListener("click", ()=>{
   preview.style.display = "none";
   cam.style.display = "block";
   overlay.style.display = "block";
-  captureBtn.style.display = "inline";
-  switchBtn.style.display = "inline";
+  captureBtn.style.display = "block";
+  switchBtn.style.display = "block";
   postButtons.style.display = "none";
 });
 
