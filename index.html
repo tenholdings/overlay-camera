@@ -50,7 +50,8 @@ button {
   bottom: 70px;
   left: 50%;
   transform: translateX(-50%);
-  display: none; /* ← 撮影前は非表示 */
+  display: none; /* 撮影前は非表示 */
+  display: flex;
   flex-direction: row;
   justify-content: center;
   align-items: center;
@@ -59,14 +60,14 @@ button {
 }
 
 #postButtons button {
+  position: static; /* ← これが重要！重なり防止 */
   background: #444;
   color: white;
-  padding: 8px 14px;
+  padding: 8px 16px;
   font-size: 15px;
   border: none;
   border-radius: 6px;
-  min-width: 100px;
-}
+  min-width:
 
 
 #canvas { display: none; }
@@ -227,6 +228,7 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
 
