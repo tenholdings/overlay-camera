@@ -46,11 +46,15 @@ button {
 #capture { bottom: 80px; left: 50%; transform: translateX(-50%); }
 #switchCam { top: 12px; right: 12px; }
 #postButtons {
-  bottom: 80px; left: 50%;
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
   transform: translateX(-50%);
   gap: 10px;
   display: none;
+  z-index: 5; /* ← 前面に出す */
 }
+
 #canvas { display: none; }
 </style>
 </head>
@@ -209,3 +213,4 @@ startCam();
 </script>
 </body>
 </html>
+
