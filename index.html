@@ -47,27 +47,27 @@ button {
 #switchCam { top: 12px; right: 12px; }
 #postButtons {
   position: fixed;
-  bottom: 70px;
+  bottom: 80px;       /* 撮影ボタンと重なってもOK */
   left: 50%;
   transform: translateX(-50%);
-  display: none; /* 撮影前は非表示 */
-  display: flex;
+  display: none;      /* 撮影前は非表示 */
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   z-index: 5;
 }
 
 #postButtons button {
-  position: static; /* ← これが重要！重なり防止 */
+  position: static;   /* 重なり防止 */
   background: #444;
   color: white;
   padding: 8px 16px;
-  font-size: 15px;
+  font-size: 12px;
   border: none;
   border-radius: 6px;
-  min-width:
+  min-width: 70px;   /* 横長で小さめ */
+}
 
 
 #canvas { display: none; }
@@ -228,6 +228,7 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
 
