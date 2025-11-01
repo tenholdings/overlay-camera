@@ -47,24 +47,25 @@ button {
 #switchCam { top: 12px; right: 12px; }
 #postButtons {
   position: fixed;
-  bottom: 80px;
+  bottom: 70px;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
+  display: none; /* ← 撮影前は非表示 */
   flex-direction: row;
   justify-content: center;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   z-index: 5;
 }
 
 #postButtons button {
   background: #444;
   color: white;
-  padding: 10px 18px;
-  font-size: 16px;
+  padding: 8px 14px;
+  font-size: 15px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
+  min-width: 100px;
 }
 
 
@@ -226,5 +227,6 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
