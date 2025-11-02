@@ -48,7 +48,7 @@ button {
 #saveHint {
   display: none;
   position: fixed;
-  bottom: 160px; /* 撮影ボタンより少し上 */
+  bottom: 180px; /* 撮影ボタンより少し上 */
   left: 50%;
   transform: translateX(-50%);
   color: white;
@@ -60,7 +60,7 @@ button {
 
 #postButtons {
   position: fixed;
-  bottom: 80px;       /* 撮影ボタンと重なってもOK */
+  bottom: 100px;       /* 撮影ボタンと重なってもOK */
   left: 50%;
   transform: translateX(-50%);
   display: none;      /* 撮影前は非表示 */
@@ -108,10 +108,10 @@ button {
 
 <button id="switchCam">🔄</button>
 <button id="capture">📸 撮影</button>
-<p id="saveHint">📱 長押しで保存してね</p>
+<p id="saveHint">📱 長押しで保存してね♡</p>
 <div id="postButtons">
   <button id="retake">🔄 撮り直す</button>
-  <button id="done">✅ 完了</button>
+  <button id="done">✅ アプリに戻る</button>
 </div>
 <button id="save">💾 ダウンロード</button>
 <canvas id="canvas"></canvas>
@@ -258,6 +258,7 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
 
