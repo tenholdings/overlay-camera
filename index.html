@@ -45,6 +45,19 @@ button {
 }
 #capture { bottom: 80px; left: 50%; transform: translateX(-50%); }
 #switchCam { top: 12px; right: 12px; }
+#saveHint {
+  display: none;
+  position: fixed;
+  bottom: 140px; /* 撮影ボタンより少し上 */
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 14px;
+  text-align: center;
+  z-index: 5;
+  opacity: 0.8;
+}
+
 #postButtons {
   position: fixed;
   bottom: 80px;       /* 撮影ボタンと重なってもOK */
@@ -68,6 +81,19 @@ button {
   border-radius: 6px;
   min-width: 70px;   /* 横長で小さめ */
 }
+#save {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #555;
+  color: white;
+  padding: 8px 16px;
+  font-size: 12px;
+  border: none;
+  border-radius: 6px;
+  z-index: 6;
+  display: none; /* 撮影前は非表示 */
+}
 
 
 #canvas { display: none; }
@@ -82,13 +108,12 @@ button {
 
 <button id="switchCam">🔄</button>
 <button id="capture">📸 撮影</button>
-
+<p id="saveHint">📱 長押しで保存してね</p>
 <div id="postButtons">
   <button id="retake">🔄 撮り直す</button>
-  <button id="save">💾 保存</button>
   <button id="done">✅ 完了</button>
 </div>
-
+<button id="save">💾 ダウンロード</button>
 <canvas id="canvas"></canvas>
 
 <script>
@@ -102,6 +127,7 @@ const retakeBtn = document.getElementById("retake");
 const saveBtn = document.getElementById("save");
 const doneBtn = document.getElementById("done");
 const switchBtn = document.getElementById("switchCam");
+const saveHint = document.getElementById("saveHint");
 
 let facing = "user"; // user: インカメラ / environment: アウトカメラ
 
@@ -199,6 +225,8 @@ captureBtn.addEventListener("click", async () => {
   captureBtn.style.display = "none";
   switchBtn.style.display = "none";
   postButtons.style.display = "flex";
+  saveHint.style.display = "block";
+  saveBtn.style.display = "block";
 });
 
 // 撮り直し
@@ -209,6 +237,8 @@ retakeBtn.addEventListener("click", () => {
   captureBtn.style.display = "inline";
   switchBtn.style.display = "inline";
   postButtons.style.display = "none";
+  saveHint.style.display = "none";
+  saveBtn.style.display = "none";
 });
 
 // 保存
@@ -228,6 +258,7 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
 
