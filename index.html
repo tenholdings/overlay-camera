@@ -43,6 +43,16 @@ button {
   background: #666;
   color: white;
 }
+#hint {
+  position: fixed;
+  bottom: 180px;  /* 撮影ボタンの少し上 */
+  width: 100%;
+  text-align: center;
+  color: #ccc;
+  font-size: 13px;
+  z-index: 3;
+}
+
 #capture { bottom: 80px; left: 50%; transform: translateX(-50%); }
 #switchCam { top: 12px; right: 12px; }
 #saveHint {
@@ -107,6 +117,7 @@ button {
 </div>
 
 <button id="switchCam">🔄</button>
+<div id="hint">指でドラッグしてもあたんの位置を動かしたり、ピンチで大きさを変えられるよ！</div>
 <button id="capture">📸 撮影</button>
 <p id="saveHint">📱 長押しで保存してね♡</p>
 <div id="postButtons">
@@ -128,6 +139,7 @@ const saveBtn = document.getElementById("save");
 const doneBtn = document.getElementById("done");
 const switchBtn = document.getElementById("switchCam");
 const saveHint = document.getElementById("saveHint");
+const hint = document.getElementById("hint");
 
 let facing = "user"; // user: インカメラ / environment: アウトカメラ
 
@@ -227,6 +239,7 @@ captureBtn.addEventListener("click", async () => {
   postButtons.style.display = "flex";
   saveHint.style.display = "block";
   saveBtn.style.display = "block";
+　hint.style.display = "none";
 });
 
 // 撮り直し
@@ -239,6 +252,7 @@ retakeBtn.addEventListener("click", () => {
   postButtons.style.display = "none";
   saveHint.style.display = "none";
   saveBtn.style.display = "none";
+  hint.style.display = "block";
 });
 
 // 保存
@@ -258,6 +272,7 @@ startCam();
 </script>
 </body>
 </html>
+
 
 
 
